@@ -186,21 +186,47 @@ CREATE POLICY IF NOT EXISTS "Users can see their own reports" ON public.reports
 -- =====================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  base_username TEXT;
+  final_username TEXT;
 BEGIN
-  INSERT INTO public.profiles (id, username, full_name, avatar_url, email, short_id, role)
-  VALUES (
-    NEW.id,
+  -- 1. Determine base username from metadata or email prefix
+  base_username := COALESCE(
     NEW.raw_user_meta_data->>'username',
+    NEW.raw_user_meta_data->>'preferred_username',
+    NEW.raw_user_meta_data->>'name',
     NEW.raw_user_meta_data->>'full_name',
-    NEW.raw_user_meta_data->>'avatar_url',
-    NEW.email,
-    generate_short_id(),
+    split_part(NEW.email, '@', 1),
     'user'
   );
 
+  -- 2. Sanitize username (alphanumeric, lowercase)
+  base_username := lower(regexp_replace(base_username, '[^a-zA-Z0-9_]', '', 'g'));
+  IF coalesce(base_username, '') = '' THEN
+    base_username := 'user';
+  END IF;
+
+  -- 3. Append short random hash to prevent unique constraint collisions
+  final_username := base_username || '_' || substr(md5(random()::text), 1, 4);
+
+  INSERT INTO public.profiles (id, username, full_name, avatar_url, email, short_id)
+  VALUES (
+    NEW.id,
+    final_username,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+    COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture'),
+    NEW.email,
+    public.generate_short_id()
+  );
+
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Capture any Postgres error so Supabase Auth registration is never blocked
+    RAISE LOG 'Error in handle_new_user for uid %: %', NEW.id, SQLERRM;
+    RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
