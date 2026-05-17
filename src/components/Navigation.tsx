@@ -1,6 +1,6 @@
 'use client'
 
-import { User, Heart, MessageCircle, Globe, Store } from 'lucide-react'
+import { User, Heart, MessageCircle, Globe, Store, HeartHandshake } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -71,6 +71,7 @@ export function Navigation() {
   const tabs = [
     { name: dict.nav.feed, href: '/feed', icon: Heart },
     { name: 'Comunidad', href: '/community', icon: Globe },
+    { name: 'Adoptar', href: '/adopt', icon: HeartHandshake },
     { name: dict.nav.matches, href: '/matches', icon: MessageCircle, badge: unreadCount },
     { name: dict.nav.profile, href: '/profiles', icon: User },
     { name: dict.nav.services, href: '/services', icon: Store },
@@ -78,29 +79,38 @@ export function Navigation() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-white/10 pb-safe">
-      <div className="flex justify-around items-center h-16 max-w-md mx-auto px-4">
+      <div className="flex justify-around items-center h-16 max-w-md mx-auto px-1">
         {tabs.map((tab) => {
-          const isActive = pathname === tab.href
+          const isActive = pathname === tab.href || pathname.startsWith(tab.href + '/')
           return (
             <Link
               key={tab.name}
               href={tab.href}
               className={cn(
-                'flex flex-col items-center justify-center w-full h-full space-y-1 transition-all relative',
+                'flex flex-col items-center justify-center flex-1 h-full space-y-0.5 transition-all relative',
                 isActive ? 'text-primary' : 'text-white/40 hover:text-white/60'
               )}
             >
               <div className="relative">
                 <tab.icon
-                  className={cn('w-6 h-6', isActive && 'fill-current drop-shadow-[0_0_8px_rgba(230,57,70,0.5)]')}
+                  className={cn(
+                    'w-5 h-5',
+                    isActive && tab.href === '/adopt' && 'text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]',
+                    isActive && tab.href !== '/adopt' && 'fill-current drop-shadow-[0_0_8px_rgba(230,57,70,0.5)]'
+                  )}
                 />
                 {tab.badge ? (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-primary text-[10px] text-white flex items-center justify-center rounded-full font-bold border-2 border-zinc-950">
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-[9px] text-white flex items-center justify-center rounded-full font-bold border border-zinc-950">
                     {tab.badge > 9 ? '9+' : tab.badge}
                   </span>
                 ) : null}
               </div>
-              <span className="text-[10px] font-medium">{tab.name}</span>
+              <span className={cn(
+                'font-medium transition-all',
+                isActive ? 'text-[9px]' : 'text-[8px]'
+              )}>
+                {tab.name}
+              </span>
             </Link>
           )
         })}

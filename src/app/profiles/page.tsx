@@ -12,6 +12,7 @@ import { ProfileForm } from '@/components/profiles/ProfileForm'
 import { AddPetButton } from '@/components/profiles/AddPetButton'
 import { DeletePetButton } from '@/components/profiles/DeletePetButton'
 import { EditPetButton } from '@/components/profiles/EditPetButton'
+import { PublishAdoptionButton } from '@/components/adoption/PublishAdoptionButton'
 
 const SPECIES_OPTIONS = [
   { value: 'dog', label: '🐕 Perro' },
@@ -116,6 +117,15 @@ export default async function ProfilesPage() {
 
         {/* Add Pet Section */}
         <AddPetButton />
+
+        {/* Adoption section */}
+        <div className="mt-4 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-lg">🏠</span>
+            <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider">Adopciones</h3>
+          </div>
+          <PublishAdoptionButton />
+        </div>
       </div>
       <Navigation />
     </div>
