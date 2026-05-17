@@ -7,6 +7,7 @@ import { useTranslation } from '@/i18n/LanguageProvider'
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { LoadingButton } from '@/components/ui/LoadingButton'
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton'
 
 export default function SignupPage() {
   const dict = useTranslation()
@@ -126,6 +127,19 @@ export default function SignupPage() {
             disabled={passwordMismatch}
           />
         </form>
+
+        <div className="relative my-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-white/10"></div>
+          </div>
+          <div className="relative flex justify-center text-xs uppercase font-medium">
+            <span className="bg-black/40 px-4 py-1 rounded-full text-white/40 backdrop-blur-md">
+              {dict.common.orContinueWith}
+            </span>
+          </div>
+        </div>
+
+        <GoogleSignInButton />
 
         <p className="text-center text-white/60 mt-6">
           {dict.common.hasAccount}{' '}

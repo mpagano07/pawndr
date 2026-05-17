@@ -13,6 +13,8 @@ export const en = {
     createAccount: 'Create Account',
     save: 'Save',
     add: 'Add',
+    continueWithGoogle: 'Continue with Google',
+    orContinueWith: 'Or continue with',
   },
   landing: {
     subtitle: 'The #1 App for Pet Playdates & Breeding',

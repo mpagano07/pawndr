@@ -15,6 +15,8 @@ export const es: Dictionary = {
     createAccount: 'Crear Cuenta',
     save: 'Guardar',
     add: 'Agregar',
+    continueWithGoogle: 'Continuar con Google',
+    orContinueWith: 'O continuar con',
   },
   landing: {
     subtitle: 'La App #1 para Citas y Encuentros de Mascotas',
