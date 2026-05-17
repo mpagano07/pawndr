@@ -7,18 +7,70 @@ export async function updateProfile(formData: FormData) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) return { error: 'Not authenticated' }
+  if (!user) return { error: 'No autenticado' }
 
   const fullName = formData.get('full_name') as string
   const bio = formData.get('bio') as string
+  const usernameRaw = formData.get('username') as string
+  const username = usernameRaw ? usernameRaw.trim().toLowerCase().replace(/[^a-z0-9_]/g, '') : ''
+
+  if (!username) {
+    return { error: 'El nombre de usuario no puede estar vacío.' }
+  }
+
+  // Verificar si el username ya existe en otro perfil
+  const { data: existing } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('username', username)
+    .neq('id', user.id)
+    .maybeSingle()
+
+  if (existing) {
+    return { error: 'Este nombre de usuario ya está en uso por otra persona.' }
+  }
+
+  // Manejo de la foto de perfil (avatar)
+  const avatarFile = formData.get('avatar') as File | null
+  let avatarUrl: string | undefined = undefined
+
+  if (avatarFile && avatarFile.size > 0) {
+    const fileExt = avatarFile.name.split('.').pop()
+    const fileName = `${user.id}/${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`
+
+    const { error: uploadError, data } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, avatarFile, { cacheControl: '3600', upsert: false })
+
+    if (!uploadError && data) {
+      const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(fileName)
+      avatarUrl = publicUrlData.publicUrl
+    } else {
+      console.error('[updateProfile Avatar Error]:', uploadError)
+    }
+  }
+
+  const updateData: any = {
+    username,
+    full_name: fullName,
+    bio,
+    updated_at: new Date().toISOString(),
+  }
+
+  if (avatarUrl) {
+    updateData.avatar_url = avatarUrl
+  }
 
   const { error } = await supabase
     .from('profiles')
-    .update({ full_name: fullName, bio, updated_at: new Date().toISOString() })
+    .update(updateData)
     .eq('id', user.id)
 
-  if (error) return { error: error.message }
-  
+  if (error) {
+    console.error('[updateProfile Error]:', error)
+    return { error: error.message }
+  }
+
   revalidatePath('/profiles')
   return { success: true }
 }

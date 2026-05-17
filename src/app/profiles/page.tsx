@@ -1,16 +1,15 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { Navigation } from '@/components/Navigation'
-import { updateProfile, addPet } from './actions'
+import { addPet } from './actions'
 import { logout } from '../auth/actions'
 import { PawPrint, User, Plus, Edit2, LogOut, ShieldAlert, Image as ImageIcon } from 'lucide-react'
 import { getDictionary } from '@/i18n/getDictionary'
 import Link from 'next/link'
 import Image from 'next/image'
 import { LocationButton } from '@/components/ui/LocationButton'
-
+import { ProfileForm } from '@/components/profiles/ProfileForm'
 import { AddPetButton } from '@/components/profiles/AddPetButton'
-
 import { DeletePetButton } from '@/components/profiles/DeletePetButton'
 import { EditPetButton } from '@/components/profiles/EditPetButton'
 
@@ -65,47 +64,7 @@ export default async function ProfilesPage() {
         </div>
 
         {/* User Profile Section */}
-        <div className="glass rounded-3xl p-6 mb-8 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-orange-500" />
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center border border-primary/30">
-              <User className="w-8 h-8 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">{profile?.full_name || dict.profile.setup}</h2>
-              <p className="text-white/60 text-sm">@{profile?.username}</p>
-            </div>
-          </div>
-
-          <form action={updateProfile} className="space-y-4">
-            <div>
-              <label className="text-xs text-white/60 uppercase tracking-wider font-semibold mb-1 block">{dict.profile.fullName}</label>
-              <input
-                type="text"
-                name="full_name"
-                defaultValue={profile?.full_name || ''}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary/50 outline-none transition-all"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-white/60 uppercase tracking-wider font-semibold mb-1 block">{dict.profile.bio}</label>
-              <textarea
-                name="bio"
-                defaultValue={profile?.bio || ''}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 focus:ring-2 focus:ring-primary/50 outline-none transition-all resize-none h-24"
-              />
-            </div>
-            <button className="w-full py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-xl transition-all flex justify-center items-center gap-2">
-              <Edit2 className="w-4 h-4" /> {dict.profile.saveProfile}
-            </button>
-          </form>
-
-          {/* Location button */}
-          <div className="mt-4">
-            <p className="text-xs text-white/50 uppercase tracking-wider font-semibold mb-2">Ubicación</p>
-            <LocationButton />
-          </div>
-        </div>
+        <ProfileForm profile={profile} dict={dict} />
 
         {/* Pets Section */}
         <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
