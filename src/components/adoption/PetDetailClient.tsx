@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Heart, Bookmark, MapPin, ArrowLeft, ExternalLink, BadgeCheck, ChevronLeft, ChevronRight, PawPrint, Zap } from 'lucide-react'
+import { Heart, Bookmark, MapPin, ArrowLeft, ExternalLink, BadgeCheck, ChevronLeft, ChevronRight, PawPrint, PartyPopper } from 'lucide-react'
 import { AdoptionRequestModal } from '@/components/adoption/AdoptionRequestModal'
 import { ShelterBadge } from '@/components/adoption/ShelterBadge'
 import { toggleFavorite } from '@/app/adopt/actions'
@@ -90,25 +90,40 @@ export function PetDetailClient({ pet, isFavorited, openRequest = false }: PetDe
             {/* Dark gradient for top/bottom button readability */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 pointer-events-none" />
 
+            {/* Adopted overlay */}
+            {pet.adoption_status === 'adopted' && (
+              <div className="absolute inset-0 z-30 bg-emerald-950/85 backdrop-blur-[2px] flex flex-col items-center justify-center p-4 text-center">
+                <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center border border-emerald-500/30 mb-4 shadow-xl shadow-emerald-500/20 animate-pulse">
+                  <PartyPopper className="w-10 h-10 text-emerald-400 animate-bounce" />
+                </div>
+                <span className="text-3xl font-black text-emerald-300 uppercase tracking-widest text-shadow-xl">
+                  ¡Mascota Adoptada!
+                </span>
+                <p className="text-sm text-emerald-100/80 mt-2 max-w-xs leading-relaxed">
+                  {pet.name} ha encontrado una familia y un nuevo hogar lleno de amor y cuidados 🏡❤️
+                </p>
+              </div>
+            )}
+
             {/* Photo navigation arrows */}
             {images.length > 1 && (
               <>
                 <button
                   onClick={() => setActivePhoto(i => (i - 1 + images.length) % images.length)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 bg-black/50 backdrop-blur-md rounded-full border border-white/15 hover:bg-black/70 transition-all z-10"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 bg-black/50 backdrop-blur-md rounded-full border border-white/15 hover:bg-black/70 transition-all z-40"
                   aria-label="Foto anterior"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => setActivePhoto(i => (i + 1) % images.length)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 bg-black/50 backdrop-blur-md rounded-full border border-white/15 hover:bg-black/70 transition-all z-10"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 bg-black/50 backdrop-blur-md rounded-full border border-white/15 hover:bg-black/70 transition-all z-40"
                   aria-label="Foto siguiente"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
                 {/* Dot indicators */}
-                <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-1.5 z-10">
+                <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-1.5 z-40">
                   {images.map((_: any, i: number) => (
                     <button
                       key={i}
@@ -128,7 +143,7 @@ export function PetDetailClient({ pet, isFavorited, openRequest = false }: PetDe
         )}
 
         {/* Back button */}
-        <div className="absolute top-4 left-4">
+        <div className="absolute top-4 left-4 z-40">
           <Link
             href="/adopt"
             className="p-2.5 bg-black/60 backdrop-blur-md rounded-full border border-white/15 hover:bg-black/80 transition-all flex items-center"
@@ -138,7 +153,7 @@ export function PetDetailClient({ pet, isFavorited, openRequest = false }: PetDe
         </div>
 
         {/* Favorite + photo count */}
-        <div className="absolute top-4 right-4 flex items-center gap-2">
+        <div className="absolute top-4 right-4 flex items-center gap-2 z-40">
           {images.length > 1 && (
             <span className="px-2 py-1 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-xs text-white/70">
               {activePhoto + 1}/{images.length}
@@ -154,8 +169,8 @@ export function PetDetailClient({ pet, isFavorited, openRequest = false }: PetDe
         </div>
 
         {/* Urgent badge on image */}
-        {pet.urgent && (
-          <div className="absolute bottom-10 left-4">
+        {pet.urgent && pet.adoption_status !== 'adopted' && (
+          <div className="absolute bottom-10 left-4 z-40">
             <span className="px-3 py-1 bg-red-500 text-white text-xs font-black uppercase tracking-wider rounded-full shadow-lg">
               🚨 URGENTE
             </span>
@@ -346,8 +361,8 @@ export function PetDetailClient({ pet, isFavorited, openRequest = false }: PetDe
               Quiero adoptar a {pet.name}
             </button>
           ) : (
-            <div className="w-full py-3.5 bg-zinc-800 border border-white/10 text-white/40 font-bold text-base rounded-2xl text-center">
-              {pet.adoption_status === 'adopted' ? '✅ Ya encontró un hogar' : '⏳ En proceso de adopción'}
+            <div className="w-full py-3.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-bold text-base rounded-2xl text-center uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/10">
+              <span>🏡</span> ¡Ya encontró un hogar lleno de amor!
             </div>
           )}
         </div>

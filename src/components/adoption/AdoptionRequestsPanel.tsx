@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Check, X, ChevronDown, ChevronUp, User, Eye, Home, Info, MessageSquare, Calendar, Heart, Phone } from 'lucide-react'
+import { Check, X, ChevronDown, ChevronUp, User, Eye, Home, Info, MessageSquare, Calendar, Heart, Phone, PartyPopper, HeartHandshake } from 'lucide-react'
 import { updateAdoptionRequestStatus } from '@/app/adopt/actions'
 import { toast } from 'sonner'
 import Image from 'next/image'
@@ -46,6 +46,7 @@ const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
 export function AdoptionRequestsPanel({ requests, petName }: AdoptionRequestsPanelProps) {
   const [expanded, setExpanded] = useState(false)
   const [selectedReq, setSelectedReq] = useState<Request | null>(null)
+  const [successModal, setSuccessModal] = useState<{ show: boolean; adopterName: string } | null>(null)
   const [isPending, startTransition] = useTransition()
   const [localRequests, setLocalRequests] = useState<Request[]>(requests)
   const [mounted, setMounted] = useState(false)
@@ -57,18 +58,23 @@ export function AdoptionRequestsPanel({ requests, petName }: AdoptionRequestsPan
   const pendingRequests = localRequests.filter(r => r.status === 'pending')
 
   const handleAction = (requestId: string, action: 'accepted' | 'rejected') => {
+    const targetReq = localRequests.find(r => r.id === requestId)
     startTransition(async () => {
       const result = await updateAdoptionRequestStatus(requestId, action)
       if (result?.error) {
         toast.error(result.error)
       } else {
         setLocalRequests(prev =>
-          prev.map(r => r.id === requestId ? { ...r, status: action } : r)
+          prev.map(r => r.id === requestId ? { ...r, status: action } : (action === 'accepted' ? { ...r, status: 'rejected' } : r))
         )
         if (selectedReq?.id === requestId) {
-          setSelectedReq(prev => prev ? { ...prev, status: action } : null)
+          setSelectedReq(null)
         }
-        toast.success(action === 'accepted' ? '✅ Solicitud aceptada' : 'Solicitud rechazada')
+        if (action === 'accepted' && targetReq) {
+          const name = targetReq.requester?.full_name || targetReq.requester?.username || 'el adoptante'
+          setSuccessModal({ show: true, adopterName: name })
+        }
+        toast.success(action === 'accepted' ? '✅ Proceso de adopción completado' : 'Solicitud rechazada')
       }
     })
   }
@@ -275,6 +281,38 @@ export function AdoptionRequestsPanel({ requests, petName }: AdoptionRequestsPan
                 </span>
               </div>
             )}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal de Celebración de Adopción Aceptada */}
+      {mounted && successModal?.show && createPortal(
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="relative w-full max-w-md glass p-8 rounded-3xl border border-emerald-500/30 text-center shadow-2xl flex flex-col items-center overflow-hidden">
+            <div className="absolute -top-12 -left-12 w-48 h-48 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-teal-500/20 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center border border-emerald-500/30 mb-6 shadow-lg shadow-emerald-500/25 relative animate-pulse">
+              <PartyPopper className="w-10 h-10 animate-bounce" />
+            </div>
+
+            <h2 className="text-3xl font-black text-white uppercase tracking-wider mb-2">
+              ¡Mascota Adoptada!
+            </h2>
+            <p className="text-emerald-300 font-bold text-lg mb-4 flex items-center gap-2">
+              <HeartHandshake className="w-5 h-5" /> Has dado un nuevo hogar a {petName}
+            </p>
+            <p className="text-white/70 text-sm leading-relaxed max-w-sm mb-8">
+              ¡Felicitaciones! Has aceptado la solicitud de <span className="text-white font-bold">{successModal.adopterName}</span>. La publicación ahora figurará como adoptada para toda la comunidad.
+            </p>
+
+            <button
+              onClick={() => setSuccessModal(null)}
+              className="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-emerald-950 font-black text-base uppercase rounded-2xl shadow-xl shadow-emerald-500/25 hover:opacity-95 active:scale-[0.98] transition-all tracking-wider"
+            >
+              ¡Excelente noticia! 🎉
+            </button>
           </div>
         </div>,
         document.body

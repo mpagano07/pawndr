@@ -207,6 +207,15 @@ export async function updateAdoptionRequestStatus(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'No autenticado' }
 
+  const { data: requestData, error: reqError } = await supabase
+    .from('adoption_requests')
+    .select('pet_id')
+    .eq('id', requestId)
+    .eq('owner_id', user.id)
+    .single()
+
+  if (reqError || !requestData) return { error: 'Solicitud no encontrada' }
+
   const { error } = await supabase
     .from('adoption_requests')
     .update({ status })
@@ -214,8 +223,25 @@ export async function updateAdoptionRequestStatus(
     .eq('owner_id', user.id)
 
   if (error) return { error: error.message }
-  revalidatePath('/adopt/my-pets')
-  return { success: true }
+
+  if (status === 'accepted') {
+    await supabase
+      .from('adoption_pets')
+      .update({ adoption_status: 'adopted' })
+      .eq('id', requestData.pet_id)
+      .eq('owner_id', user.id)
+
+    await supabase
+      .from('adoption_requests')
+      .update({ status: 'rejected' })
+      .eq('pet_id', requestData.pet_id)
+      .eq('owner_id', user.id)
+      .neq('id', requestId)
+      .eq('status', 'pending')
+  }
+
+  revalidatePath('/adopt', 'layout')
+  return { success: true, petId: requestData.pet_id }
 }
 
 // ─── Publicar mascota en adopción ─────────────────────────────────────────────

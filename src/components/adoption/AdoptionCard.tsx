@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { Heart, Bookmark, Eye, MapPin, Zap, AlertCircle, PawPrint } from 'lucide-react'
+import { Heart, Bookmark, Eye, MapPin, AlertCircle, PawPrint, PartyPopper } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { toggleFavorite } from '@/app/adopt/actions'
@@ -69,12 +69,27 @@ export function AdoptionCard({ pet, isFavorited = false }: AdoptionCardProps) {
           </div>
         )}
 
+        {/* Adopted overlay */}
+        {pet.adoption_status === 'adopted' && (
+          <div className="absolute inset-0 z-20 bg-emerald-950/85 backdrop-blur-[2px] flex flex-col items-center justify-center p-4 text-center">
+            <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center border border-emerald-500/30 mb-3 shadow-lg shadow-emerald-500/20 animate-pulse">
+              <PartyPopper className="w-8 h-8 text-emerald-400" />
+            </div>
+            <span className="text-xl font-black text-emerald-300 uppercase tracking-widest text-shadow-lg">
+              ¡Mascota Adoptada!
+            </span>
+            <p className="text-xs text-emerald-100/70 mt-1 max-w-[180px]">
+              Encontró un nuevo hogar lleno de amor 🏡❤️
+            </p>
+          </div>
+        )}
+
         {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent pointer-events-none" />
 
         {/* Top badges */}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5">
-          {pet.urgent && (
+        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-30">
+          {pet.urgent && pet.adoption_status !== 'adopted' && (
             <span className="flex items-center gap-1 px-2 py-0.5 bg-red-500 text-white text-[10px] font-black uppercase tracking-wider rounded-full shadow-lg">
               <AlertCircle className="w-3 h-3" />
               URGENTE
@@ -102,7 +117,7 @@ export function AdoptionCard({ pet, isFavorited = false }: AdoptionCardProps) {
           onClick={handleFavorite}
           disabled={isPending}
           aria-label={favorited ? 'Quitar de favoritos' : 'Guardar en favoritos'}
-          className="absolute top-2.5 right-2.5 p-2 bg-black/50 backdrop-blur-md rounded-full border border-white/10 hover:scale-110 active:scale-95 transition-all"
+          className="absolute top-2.5 right-2.5 p-2 bg-black/50 backdrop-blur-md rounded-full border border-white/10 hover:scale-110 active:scale-95 transition-all z-30"
         >
           <Bookmark
             className={`w-4 h-4 transition-colors ${favorited ? 'fill-amber-400 text-amber-400' : 'text-white/70'}`}
@@ -110,7 +125,7 @@ export function AdoptionCard({ pet, isFavorited = false }: AdoptionCardProps) {
         </button>
 
         {/* Bottom info */}
-        <div className="absolute bottom-0 left-0 right-0 p-3">
+        <div className="absolute bottom-0 left-0 right-0 p-3 z-30">
           <h3 className="font-bold text-white text-base leading-tight">
             {SPECIES_EMOJI[pet.species] || '🐾'} {pet.name}
             {ageStr && <span className="font-normal text-white/70 text-sm">, {ageStr}</span>}
@@ -132,20 +147,28 @@ export function AdoptionCard({ pet, isFavorited = false }: AdoptionCardProps) {
 
       {/* Action buttons */}
       <div className="flex items-center divide-x divide-white/8">
-        <Link
-          href={`/adopt/${pet.id}`}
-          className="flex-1 flex items-center justify-center gap-1.5 py-3 text-white/70 hover:text-white hover:bg-white/5 transition-all text-xs font-semibold"
-        >
-          <Eye className="w-4 h-4" />
-          Ver perfil
-        </Link>
-        <Link
-          href={`/adopt/${pet.id}?action=request`}
-          className="flex-1 flex items-center justify-center gap-1.5 py-3 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-all text-xs font-semibold"
-        >
-          <Heart className="w-4 h-4" />
-          Me interesa
-        </Link>
+        {pet.adoption_status === 'adopted' ? (
+          <div className="flex-1 text-center py-3 text-emerald-400 font-bold text-xs bg-emerald-500/10 tracking-wide uppercase">
+            💚 Proceso de adopción finalizado
+          </div>
+        ) : (
+          <>
+            <Link
+              href={`/adopt/${pet.id}`}
+              className="flex-1 flex items-center justify-center gap-1.5 py-3 text-white/70 hover:text-white hover:bg-white/5 transition-all text-xs font-semibold"
+            >
+              <Eye className="w-4 h-4" />
+              Ver perfil
+            </Link>
+            <Link
+              href={`/adopt/${pet.id}?action=request`}
+              className="flex-1 flex items-center justify-center gap-1.5 py-3 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 transition-all text-xs font-semibold"
+            >
+              <Heart className="w-4 h-4" />
+              Me interesa
+            </Link>
+          </>
+        )}
       </div>
     </div>
   )
