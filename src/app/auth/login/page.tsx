@@ -63,6 +63,15 @@ export default function LoginPage() {
             </button>
           </div>
 
+          <div className="flex justify-end -mt-1 mb-1">
+            <Link
+              href="/auth/forgot-password"
+              className="text-sm text-primary/80 hover:text-primary transition-colors hover:underline"
+            >
+              {dict.auth.forgotPassword}
+            </Link>
+          </div>
+
           {message && (
             <p className="text-red-400 text-sm text-center bg-red-400/10 p-3 rounded-lg">
               {message}

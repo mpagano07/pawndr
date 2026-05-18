@@ -107,5 +107,20 @@ export const es: Dictionary = {
     createPost: 'Publicar algo',
     createEvent: 'Organizar Evento',
     compatibility: 'Compatibilidad'
+  },
+  auth: {
+    forgotPassword: '¿Olvidaste tu contraseña?',
+    resetPasswordTitle: 'Recuperar Contraseña',
+    resetPasswordDesc: 'Ingresa tu correo electrónico y te enviaremos un enlace seguro para restablecer tu contraseña.',
+    sendRecoveryLink: 'Enviar enlace de recuperación',
+    backToLogin: 'Volver a iniciar sesión',
+    resetEmailSent: 'Si el correo está registrado, recibirás un enlace de recuperación en unos instantes.',
+    newPassword: 'Nueva Contraseña',
+    confirmPassword: 'Confirmar Contraseña',
+    updatePassword: 'Actualizar Contraseña',
+    passwordUpdatedSuccess: '¡Tu contraseña ha sido actualizada exitosamente!',
+    passwordsDoNotMatch: 'Las contraseñas no coinciden.',
+    updating: 'Actualizando...',
+    sending: 'Enviando...'
   }
 }

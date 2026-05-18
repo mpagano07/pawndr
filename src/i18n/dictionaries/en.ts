@@ -105,6 +105,21 @@ export const en = {
     createPost: 'Post something',
     createEvent: 'Create Event',
     compatibility: 'Compatibility'
+  },
+  auth: {
+    forgotPassword: 'Forgot password?',
+    resetPasswordTitle: 'Reset Password',
+    resetPasswordDesc: 'Enter your email address and we will send you a secure link to reset your password.',
+    sendRecoveryLink: 'Send recovery link',
+    backToLogin: 'Back to login',
+    resetEmailSent: 'If your email is registered, you will receive a recovery link shortly.',
+    newPassword: 'New Password',
+    confirmPassword: 'Confirm Password',
+    updatePassword: 'Update Password',
+    passwordUpdatedSuccess: 'Your password has been successfully updated!',
+    passwordsDoNotMatch: 'Passwords do not match.',
+    updating: 'Updating...',
+    sending: 'Sending...'
   }
 }
 
