@@ -1,12 +1,31 @@
 "use client";
 
-import { Heart, Shield, MapPin, Sparkles, MessageCircle, PawPrint } from "lucide-react";
+import { Heart, Shield, MapPin, Sparkles, MessageCircle, PawPrint, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useTranslation } from "@/i18n/LanguageProvider";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 export default function Home() {
   const dict = useTranslation()
+  const searchParams = useSearchParams()
+  const [authError, setAuthError] = useState(false)
+
+  useEffect(() => {
+    const errorCode = searchParams.get('error_code')
+    const errorDesc = searchParams.get('error_description')
+    const hash = window.location.hash
+
+    if (
+      errorCode === 'otp_expired' ||
+      hash.includes('otp_expired') ||
+      hash.includes('expired') ||
+      (errorDesc && errorDesc.toLowerCase().includes('expired'))
+    ) {
+      setAuthError(true)
+    }
+  }, [searchParams])
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-background">
@@ -29,6 +48,33 @@ export default function Home() {
           </Link>
         </div>
       </nav>
+
+      {/* Auth Error Alert for Expired Magic Links */}
+      {authError && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute top-28 left-4 right-4 z-50 max-w-xl mx-auto"
+        >
+          <div className="glass p-6 rounded-2xl border border-red-500/30 bg-red-500/10 backdrop-blur-xl shadow-2xl flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
+            <div className="w-12 h-12 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center shrink-0 border border-red-500/30">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-bold text-lg text-white">Enlace de recuperación expirado</h4>
+              <p className="text-sm text-white/70 mt-1 leading-relaxed">
+                Por seguridad, los enlaces de recuperación caducan al usarse o si los sistemas de protección de tu correo hacen un pre-escaneo.
+              </p>
+            </div>
+            <Link
+              href="/auth/forgot-password"
+              className="px-5 py-2.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl shadow-lg shadow-primary/25 hover:bg-primary/90 transition-all shrink-0 whitespace-nowrap"
+            >
+              Solicitar nuevo enlace
+            </Link>
+          </div>
+        </motion.div>
+      )}
 
       {/* Hero Section */}
       <main className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 text-center">
