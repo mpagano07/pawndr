@@ -1,38 +1,68 @@
 "use client"
 
-import { updatePassword } from '../actions'
-import { PawPrint, Lock, Eye, EyeOff, CheckCircle2, ArrowRight } from 'lucide-react'
+import { PawPrint, Lock, Eye, EyeOff, CheckCircle2, ArrowRight, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { useTranslation } from '@/i18n/LanguageProvider'
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
-import { LoadingButton } from '@/components/ui/LoadingButton'
 import { createClient } from '@/utils/supabase/client'
+import { motion } from 'framer-motion'
 
 export default function ResetPasswordPage() {
   const dict = useTranslation()
-  const searchParams = useSearchParams()
-  const error = searchParams.get('error')
-  const success = searchParams.get('success')
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
-    // Al instanciar el cliente en el navegador, @supabase/ssr procesa y almacena
-    // automáticamente los tokens de recuperación presentes en la URL (#access_token o ?code)
     const supabase = createClient()
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        console.log('Sesión de recuperación establecida.')
+        console.log('Sesión de recuperación establecida en cliente.')
       }
     })
   }, [])
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setLoading(true)
+    setErrorMessage('')
+    setStatus('idle')
+
+    const formData = new FormData(e.currentTarget)
+    const password = formData.get('password') as string
+    const confirmPassword = formData.get('confirmPassword') as string
+
+    if (!password || password !== confirmPassword) {
+      setErrorMessage(dict.auth.passwordsDoNotMatch)
+      setStatus('error')
+      setLoading(false)
+      return
+    }
+
+    const supabase = createClient()
+    const { error } = await supabase.auth.updateUser({ password })
+
+    setLoading(false)
+
+    if (error) {
+      setErrorMessage(error.message)
+      setStatus('error')
+    } else {
+      setStatus('success')
+    }
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-background px-4">
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/20 blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-orange-500/20 blur-[120px] pointer-events-none" />
 
-      <div className="glass p-8 rounded-3xl w-full max-w-md relative z-10">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="glass p-8 rounded-3xl w-full max-w-md relative z-10"
+      >
         <div className="flex justify-center mb-6">
           <Link href="/" className="flex items-center gap-2">
             <PawPrint className="text-primary w-8 h-8" />
@@ -40,7 +70,7 @@ export default function ResetPasswordPage() {
           </Link>
         </div>
 
-        {success ? (
+        {status === 'success' ? (
           <div className="text-center py-6 flex flex-col items-center gap-4">
             <div className="w-16 h-16 bg-green-500/10 text-green-400 rounded-full flex items-center justify-center border border-green-500/20 mb-2">
               <CheckCircle2 className="w-8 h-8" />
@@ -66,7 +96,7 @@ export default function ResetPasswordPage() {
               </p>
             </div>
 
-            <form className="flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div className="relative">
                 <Lock className="absolute left-3 top-3.5 w-5 h-5 text-white/40" />
                 <input
@@ -99,21 +129,31 @@ export default function ResetPasswordPage() {
                 />
               </div>
 
-              {error && (
-                <p className="text-red-400 text-sm text-center bg-red-400/10 p-3 rounded-lg border border-red-400/20">
-                  {error}
-                </p>
+              {status === 'error' && (
+                <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/20 p-3 rounded-xl text-red-400 text-sm">
+                  <AlertTriangle className="w-5 h-5 shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
               )}
 
-              <LoadingButton
-                formAction={updatePassword}
-                label={dict.auth.updatePassword}
-                loadingLabel={dict.auth.updating}
-              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 bg-primary text-primary-foreground font-semibold rounded-xl shadow-lg shadow-primary/25 hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <span>{dict.auth.updating}</span>
+                  </>
+                ) : (
+                  <span>{dict.auth.updatePassword}</span>
+                )}
+              </button>
             </form>
           </>
         )}
-      </div>
+      </motion.div>
     </div>
   )
 }
