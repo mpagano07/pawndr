@@ -47,7 +47,8 @@ export const es: Dictionary = {
     petMale: 'Macho',
     petFemale: 'Hembra',
     petBio: 'Biografía de la Mascota',
-    addPetBtn: 'Agregar Mascota'
+    addPetBtn: 'Agregar Mascota',
+    petAdded: '¡Mascota agregada con éxito! 🐾'
   },
   feed: {
     discover: 'Descubrir',

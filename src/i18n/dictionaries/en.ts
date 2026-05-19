@@ -45,7 +45,8 @@ export const en = {
     petMale: 'Male',
     petFemale: 'Female',
     petBio: 'Pet Bio',
-    addPetBtn: 'Add Pet'
+    addPetBtn: 'Add Pet',
+    petAdded: 'Pet added successfully! 🐾'
   },
   feed: {
     discover: 'Discover',

@@ -79,7 +79,10 @@ export async function addPet(formData: FormData) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) return { error: 'Not authenticated' }
+  if (!user) {
+    console.error('[addPet Error]: User is not authenticated')
+    return { error: 'Not authenticated' }
+  }
 
   const name = formData.get('name') as string
   const species = formData.get('species') as string
@@ -102,6 +105,13 @@ export async function addPet(formData: FormData) {
   const photoOrder = JSON.parse(formData.get('photo_order') as string || '[]') as string[]
   const uploadedFiles = formData.getAll('photo') as File[]
   
+  console.log('[addPet Action] Starting execution for user:', user.id)
+  console.log('[addPet Action] Form fields received:', {
+    name, species, breed, age, gender, vaccinated, size, pedigree, housing, activityLevel, kidsFriendly, temperament, geneticInfo, behaviorPrediction
+  })
+  console.log('[addPet Action] Photo order:', photoOrder)
+  console.log('[addPet Action] Uploaded files list:', uploadedFiles.map(f => ({ name: f.name, size: f.size })))
+
   let photosArray: string[] = []
   const orderedPhotoOrder = photoOrder.slice(0, maxPhotos)
 
@@ -114,61 +124,85 @@ export async function addPet(formData: FormData) {
         if (photo && photo.size > 0) {
           const fileExt = photo.name.split('.').pop()
           const fileName = `${user.id}/${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`
+          console.log(`[addPet Action] Uploading ordered photo: ${photo.name} to path ${fileName}...`)
 
           const { error: uploadError, data } = await supabase.storage
             .from('pets')
             .upload(fileName, photo, { cacheControl: '3600', upsert: false })
 
+          if (uploadError) {
+            console.error('[addPet Action Storage Upload Error]:', uploadError)
+          }
+
           if (!uploadError && data) {
             const { data: publicUrlData } = supabase.storage.from('pets').getPublicUrl(fileName)
             photosArray.push(publicUrlData.publicUrl)
+            console.log('[addPet Action] Photo uploaded successfully, public URL:', publicUrlData.publicUrl)
           }
+        } else {
+          console.warn(`[addPet Action] Photo not found or empty for file: ${fileNameRaw}`)
         }
       }
     }
   } else {
     // Fallback for simple uploads
+    console.log('[addPet Action] No photo order provided, executing fallback upload logic')
     for (const photo of uploadedFiles.slice(0, maxPhotos)) {
       if (photo && photo.size > 0) {
         const fileExt = photo.name.split('.').pop()
         const fileName = `${user.id}/${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`
+        console.log(`[addPet Action Fallback] Uploading photo: ${photo.name} to path ${fileName}...`)
 
         const { error: uploadError, data } = await supabase.storage
           .from('pets')
           .upload(fileName, photo, { cacheControl: '3600', upsert: false })
 
+        if (uploadError) {
+          console.error('[addPet Action Fallback Storage Upload Error]:', uploadError)
+        }
+
         if (!uploadError && data) {
           const { data: publicUrlData } = supabase.storage.from('pets').getPublicUrl(fileName)
           photosArray.push(publicUrlData.publicUrl)
+          console.log('[addPet Action Fallback] Photo uploaded successfully, public URL:', publicUrlData.publicUrl)
         }
       }
     }
   }
 
+  const insertPayload = {
+    owner_id: user.id,
+    name,
+    species: species || 'other',
+    breed,
+    age,
+    gender,
+    bio,
+    vaccinated,
+    size: size || 'medium',
+    pedigree,
+    medical_notes: medicalNotes,
+    housing: housing || 'both',
+    activity_level: activityLevel,
+    kids_friendly: kidsFriendly,
+    temperament: temperament,
+    genetic_info: geneticInfo,
+    behavior_prediction: behaviorPrediction,
+    photos: photosArray
+  }
+
+  console.log('[addPet Action] Inserting payload to "pets" table:', insertPayload)
+
   const { error } = await supabase
     .from('pets')
-    .insert({
-      owner_id: user.id,
-      name,
-      species: species || 'other',
-      breed,
-      age,
-      gender,
-      bio,
-      vaccinated,
-      size: size || 'medium',
-      pedigree,
-      medical_notes: medicalNotes,
-      housing: housing || 'both',
-      activity_level: activityLevel,
-      kids_friendly: kidsFriendly,
-      temperament: temperament,
-      genetic_info: geneticInfo,
-      behavior_prediction: behaviorPrediction,
-      photos: photosArray
-    })
+    .insert(insertPayload)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error('[addPet Action Database Insert Error]:', error)
+    return { error: error.message }
+  }
+
+  console.log('[addPet Action] Database insert successful!')
 
   revalidatePath('/profiles')
   return { success: true }
