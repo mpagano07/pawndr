@@ -30,14 +30,14 @@ export function PublishAdoptionButton() {
 
     startTransition(async () => {
       const result = await publishAdoptionPet(fd)
-      if (result?.error) {
-        toast.error(result.error)
-      } else {
+      if (result && result.success) {
         toast.success('¡Mascota publicada en adopción! 🐾')
         setOpen(false)
         setPreviews([])
         setFiles([])
         router.push(`/adopt/${result.petId}`)
+      } else {
+        toast.error(result?.error || 'Error al publicar mascota')
       }
     })
   }

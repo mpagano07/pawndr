@@ -98,11 +98,11 @@ export function EditPetButton({ pet }: { pet: any }) {
     
     try {
       const result = await updatePet(formData)
-      if (result?.error) {
-        toast.error(result.error)
-      } else {
+      if (result && result.success) {
         toast.success('Mascota actualizada correctamente')
         setIsOpen(false)
+      } else {
+        toast.error(result?.error || 'Error al actualizar la mascota')
       }
     } catch (err) {
       toast.error('Algo salió mal')

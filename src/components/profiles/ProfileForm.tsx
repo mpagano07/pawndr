@@ -38,10 +38,10 @@ export function ProfileForm({ profile, dict }: ProfileFormProps) {
 
     try {
       const result = await updateProfile(formData)
-      if (result?.error) {
-        toast.error(result.error)
-      } else {
+      if (result && result.success) {
         toast.success('Perfil actualizado exitosamente')
+      } else {
+        toast.error(result?.error || 'Error al actualizar el perfil')
       }
     } catch (err) {
       toast.error('Error al actualizar el perfil')

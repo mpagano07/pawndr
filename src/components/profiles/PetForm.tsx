@@ -143,16 +143,16 @@ export function PetForm({ onSuccess }: { onSuccess?: () => void }) {
     
     try {
       const result = await addPet(formData)
-      if (result?.error) {
-        toast.error(result.error)
-      } else {
+      if (result && result.success) {
         toast.success(dict.profile.petAdded || 'Pet added successfully!')
         formRef.current?.reset()
         setPhotos([])
         onSuccess?.()
+      } else {
+        toast.error(result?.error || 'Error al agregar la mascota. Inténtalo de nuevo.')
       }
     } catch (err) {
-      toast.error('Something went wrong')
+      toast.error('Algo salió mal. Inténtalo de nuevo.')
     } finally {
       setIsSubmitting(false)
     }
