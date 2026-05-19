@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { toast } from 'sonner'
 import { updatePet } from '@/app/profiles/actions'
+import { compressImage } from '@/lib/utils'
 import { useTranslation } from '@/i18n/LanguageProvider'
 import { ClientPortal } from '../ui/ClientPortal'
 
@@ -33,7 +34,7 @@ export function EditPetButton({ pet }: { pet: any }) {
   )
   const dict = useTranslation()
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
     if (files.length === 0) return
 
@@ -44,17 +45,27 @@ export function EditPetButton({ pet }: { pet: any }) {
     }
 
     const selectedFiles = files.slice(0, remaining)
-    const newPhotos = selectedFiles.map(file => ({
-      id: `new-${Math.random().toString(36).substr(2, 9)}`,
-      src: URL.createObjectURL(file),
-      file
-    }))
+    const toastId = toast.loading('Comprimiendo imágenes...')
+
+    try {
+      const newPhotos = await Promise.all(selectedFiles.map(async (file) => {
+        const compressedFile = await compressImage(file)
+        return {
+          id: `new-${Math.random().toString(36).substr(2, 9)}`,
+          src: URL.createObjectURL(compressedFile),
+          file: compressedFile
+        }
+      }))
+
+      setPhotos(prev => [...prev, ...newPhotos])
+      toast.success('Imágenes listas', { id: toastId })
+    } catch (err) {
+      toast.error('Error al procesar las imágenes', { id: toastId })
+    }
 
     if (files.length > remaining) {
       toast.error(`Solo puedes subir hasta ${MAX_PHOTOS} imágenes.`)
     }
-
-    setPhotos(prev => [...prev, ...newPhotos])
   }
 
   const removePhoto = (id: string) => {

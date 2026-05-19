@@ -7,6 +7,8 @@ import { publishAdoptionPet } from '@/app/adopt/actions'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
+import { compressImage } from '@/lib/utils'
+
 type HousingType = 'apartment' | 'house' | 'farm' | 'other'
 
 export function PublishAdoptionButton() {
@@ -17,10 +19,19 @@ export function PublishAdoptionButton() {
   const fileRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
-  const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []).slice(0, 5)
-    setFiles(selected)
-    setPreviews(selected.map(f => URL.createObjectURL(f)))
+    if (selected.length === 0) return
+
+    const toastId = toast.loading('Comprimiendo imágenes...')
+    try {
+      const compressed = await Promise.all(selected.map(f => compressImage(f)))
+      setFiles(compressed)
+      setPreviews(compressed.map(f => URL.createObjectURL(f)))
+      toast.success('Imágenes listas', { id: toastId })
+    } catch (err) {
+      toast.error('Error al procesar las imágenes', { id: toastId })
+    }
   }
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {

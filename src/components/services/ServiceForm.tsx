@@ -5,6 +5,8 @@ import { createService, updateService } from '@/app/services/actions'
 import { Camera, Loader2, X, MapPin, Phone, Type, Info, ExternalLink, Star } from 'lucide-react'
 import { useTranslation } from '@/i18n/LanguageProvider'
 import Image from 'next/image'
+import { toast } from 'sonner'
+import { compressImage } from '@/lib/utils'
 
 interface ServiceFormProps {
   service?: any
@@ -19,12 +21,19 @@ export function ServiceForm({ service, onSuccess }: ServiceFormProps) {
   const [previews, setPreviews] = useState<string[]>([])
   const [existingPhotos, setExistingPhotos] = useState<string[]>(service?.photos || [])
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    setPhotos(prev => [...prev, ...files])
+    if (files.length === 0) return
 
-    const newPreviews = files.map(file => URL.createObjectURL(file))
-    setPreviews(prev => [...prev, ...newPreviews])
+    const toastId = toast.loading('Comprimiendo imágenes...')
+    try {
+      const compressed = await Promise.all(files.map(f => compressImage(f)))
+      setPhotos(prev => [...prev, ...compressed])
+      setPreviews(prev => [...prev, ...compressed.map(f => URL.createObjectURL(f))])
+      toast.success('Imágenes listas', { id: toastId })
+    } catch (err) {
+      toast.error('Error al procesar las imágenes', { id: toastId })
+    }
   }
 
   const removeNewPhoto = (index: number) => {

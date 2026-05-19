@@ -6,6 +6,7 @@ import { updateProfile } from '@/app/profiles/actions'
 import { toast } from 'sonner'
 import Image from 'next/image'
 import { LocationButton } from '@/components/ui/LocationButton'
+import { compressImage } from '@/lib/utils'
 
 interface ProfileFormProps {
   profile: any
@@ -18,15 +19,18 @@ export function ProfileForm({ profile, dict }: ProfileFormProps) {
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('La imagen no debe superar los 5MB')
-        return
+      const toastId = toast.loading('Comprimiendo imagen...')
+      try {
+        const compressed = await compressImage(file)
+        setAvatarFile(compressed)
+        setAvatarPreview(URL.createObjectURL(compressed))
+        toast.success('Imagen lista', { id: toastId })
+      } catch (err) {
+        toast.error('Error al procesar la imagen', { id: toastId })
       }
-      setAvatarFile(file)
-      setAvatarPreview(URL.createObjectURL(file))
     }
   }
 
