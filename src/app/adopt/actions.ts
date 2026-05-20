@@ -307,28 +307,16 @@ export async function publishAdoptionPet(formData: FormData) {
     return { error: petError?.message || 'Error al publicar mascota' }
   }
 
-  // Subir imágenes
-  const photos = formData.getAll('photos') as File[]
-  let position = 0
-
-  for (const photo of photos.slice(0, 5)) {
-    if (photo.size === 0) continue
-    const ext = photo.name.split('.').pop()
-    const fileName = `${user.id}/${pet.id}/${Date.now()}_${position}.${ext}`
-
-    const { error: uploadErr, data: uploadData } = await supabase.storage
-      .from('adoption')
-      .upload(fileName, photo, { cacheControl: '3600', upsert: false })
-
-    if (!uploadErr && uploadData) {
-      const { data: urlData } = supabase.storage.from('adoption').getPublicUrl(fileName)
-      await supabase.from('adoption_pet_images').insert({
-        pet_id: pet.id,
-        image_url: urlData.publicUrl,
-        position,
-      })
-      position++
-    }
+  // Guardar imágenes de S3
+  const photosArray = JSON.parse(formData.get('photos') as string || '[]') as string[]
+  
+  for (let i = 0; i < photosArray.length; i++) {
+    const imageUrl = photosArray[i]
+    await supabase.from('adoption_pet_images').insert({
+      pet_id: pet.id,
+      image_url: imageUrl,
+      position: i,
+    })
   }
 
   revalidatePath('/adopt')

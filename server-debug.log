@@ -1,0 +1,12 @@
+[2026-05-20T22:43:17.705Z] [addPet Action] Executing...
+[2026-05-20T22:43:18.073Z] [addPet Action] User ID: f3047352-b179-47f4-8ae8-6faae2befbed
+[2026-05-20T22:43:18.073Z] [addPet Action] Form fields: {"name":"pippo","species":"dog","breed":"mestizo","age":1,"gender":"male","vaccinated":true,"size":"small","pedigree":false,"housing":"apartment","activityLevel":4,"kidsFriendly":true,"temperament":["tranquilo"],"geneticInfo":"","behaviorPrediction":""}
+[2026-05-20T22:43:18.073Z] [addPet Action] Photos array received: ["https://amzn-s3-pawnder.s3.us-east-2.amazonaws.com/f3047352-b179-47f4-8ae8-6faae2befbed/m72bm05uqn_1779316996741.jpg"]
+[2026-05-20T22:43:18.073Z] [addPet Action] Inserting payload: {"owner_id":"f3047352-b179-47f4-8ae8-6faae2befbed","name":"pippo","species":"dog","breed":"mestizo","age":1,"gender":"male","bio":"","vaccinated":true,"size":"small","pedigree":false,"medical_notes":null,"housing":"apartment","activity_level":4,"kids_friendly":true,"temperament":["tranquilo"],"genetic_info":"","behavior_prediction":"","photos":["https://amzn-s3-pawnder.s3.us-east-2.amazonaws.com/f3047352-b179-47f4-8ae8-6faae2befbed/m72bm05uqn_1779316996741.jpg"]}
+[2026-05-20T22:43:18.685Z] [addPet Action] Database insert successful!
+[2026-05-20T23:56:30.898Z] [addPet Action] Executing...
+[2026-05-20T23:56:31.097Z] [addPet Action] User ID: f3047352-b179-47f4-8ae8-6faae2befbed
+[2026-05-20T23:56:31.097Z] [addPet Action] Form fields: {"name":"pippo","species":"dog","breed":"mestizo","age":1,"gender":"male","vaccinated":true,"size":"small","pedigree":false,"housing":"apartment","activityLevel":3,"kidsFriendly":true,"temperament":["tranquilo"],"geneticInfo":"","behaviorPrediction":""}
+[2026-05-20T23:56:31.097Z] [addPet Action] Photos array received: ["https://amzn-s3-pawndr.s3.us-east-2.amazonaws.com/f3047352-b179-47f4-8ae8-6faae2befbed/026wzdjhru1g_1779321390044.jpg"]
+[2026-05-20T23:56:31.097Z] [addPet Action] Inserting payload: {"owner_id":"f3047352-b179-47f4-8ae8-6faae2befbed","name":"pippo","species":"dog","breed":"mestizo","age":1,"gender":"male","bio":"","vaccinated":true,"size":"small","pedigree":false,"medical_notes":null,"housing":"apartment","activity_level":3,"kids_friendly":true,"temperament":["tranquilo"],"genetic_info":"","behavior_prediction":"","photos":["https://amzn-s3-pawndr.s3.us-east-2.amazonaws.com/f3047352-b179-47f4-8ae8-6faae2befbed/026wzdjhru1g_1779321390044.jpg"]}
+[2026-05-20T23:56:31.340Z] [addPet Action] Database insert successful!

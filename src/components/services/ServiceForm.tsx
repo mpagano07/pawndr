@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createService, updateService } from '@/app/services/actions'
+import { getPresignedUploadUrl } from '@/app/profiles/s3-actions'
 import { Camera, Loader2, X, MapPin, Phone, Type, Info, ExternalLink, Star } from 'lucide-react'
 import { useTranslation } from '@/i18n/LanguageProvider'
 import Image from 'next/image'
@@ -50,27 +51,52 @@ export function ServiceForm({ service, onSuccess }: ServiceFormProps) {
     setLoading(true)
     setError(null)
 
-    console.log('--- FORM SUBMISSION ---')
-    console.log('Servicio:', service ? 'Update' : 'Create')
-    console.log('Fotos en estado:', photos.length)
-    photos.forEach((f, i) => console.log(`Foto ${i}: ${f.name} (${f.size} bytes)`))
-
     const formData = new FormData(e.currentTarget)
     if (service) {
       formData.append('id', service.id)
-      formData.append('existing_photos', JSON.stringify(existingPhotos))
     }
 
-    photos.forEach(photo => formData.append('photos', photo))
+    try {
+      const s3Urls: string[] = []
 
-    const result = service ? await updateService(formData) : await createService(formData)
-    console.log('Resultado de la acción:', result)
+      // Upload existing photos (keep them)
+      existingPhotos.forEach(url => s3Urls.push(url))
 
-    if (result.error) {
-      setError(result.error)
+      // Upload new photos to S3
+      if (photos.length > 0) {
+        for (const photo of photos) {
+          const s3Res = await getPresignedUploadUrl(photo.name, photo.type)
+          if (s3Res.error || !s3Res.uploadUrl || !s3Res.publicUrl) {
+            throw new Error(s3Res.error || 'Error al obtener URL de S3')
+          }
+
+          const uploadRes = await fetch(s3Res.uploadUrl, {
+            method: 'PUT',
+            body: photo,
+            headers: { 'Content-Type': photo.type },
+          })
+
+          if (!uploadRes.ok) {
+            throw new Error('Error al subir una imagen a S3')
+          }
+
+          s3Urls.push(s3Res.publicUrl)
+        }
+      }
+
+      formData.append('photos', JSON.stringify(s3Urls))
+
+      const result = service ? await updateService(formData) : await createService(formData)
+
+      if (result.error) {
+        setError(result.error)
+        setLoading(false)
+      } else {
+        onSuccess()
+      }
+    } catch (err: any) {
+      setError(err.message || 'Error al subir imágenes')
       setLoading(false)
-    } else {
-      onSuccess()
     }
   }
 

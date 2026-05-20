@@ -5,6 +5,7 @@ import { Plus, Image as ImageIcon, PawPrint, Loader2, Sparkles, Brain, FlaskConi
 import Image from 'next/image'
 import { toast } from 'sonner'
 import { addPet } from '@/app/profiles/actions'
+import { getPresignedUploadUrl } from '@/app/profiles/s3-actions'
 import { compressImage } from '@/lib/utils'
 import { useTranslation } from '@/i18n/LanguageProvider'
 
@@ -84,16 +85,38 @@ export function PetForm({ onSuccess }: { onSuccess?: () => void }) {
 
     const formData = new FormData(e.currentTarget)
     
-    // Add photo order
-    const photoOrder = photos.map(p => `file:${p.file.name}`)
-    formData.append('photo_order', JSON.stringify(photoOrder))
-    
-    // Add files
-    photos.forEach(p => {
-      formData.append('photo', p.file)
-    })
-    
     try {
+      const s3Urls: string[] = []
+      
+      if (photos.length > 0) {
+        const toastId = toast.loading('Subiendo fotos...')
+        
+        for (const photo of photos) {
+          const s3Res = await getPresignedUploadUrl(photo.file.name, photo.file.type)
+          if (s3Res.error || !s3Res.uploadUrl || !s3Res.publicUrl) {
+            throw new Error(s3Res.error || 'Error al obtener URL de S3')
+          }
+
+          const uploadRes = await fetch(s3Res.uploadUrl, {
+            method: 'PUT',
+            body: photo.file,
+            headers: {
+              'Content-Type': photo.file.type,
+            },
+          })
+
+          if (!uploadRes.ok) {
+            throw new Error('Error al subir una de las imágenes a S3')
+          }
+
+          s3Urls.push(s3Res.publicUrl)
+        }
+        
+        toast.success('Fotos subidas con éxito', { id: toastId })
+      }
+      
+      formData.append('photos', JSON.stringify(s3Urls))
+      
       const result = await addPet(formData)
       if (result && result.success) {
         toast.success(dict.profile.petAdded || 'Pet added successfully!')
@@ -103,8 +126,8 @@ export function PetForm({ onSuccess }: { onSuccess?: () => void }) {
       } else {
         toast.error(result?.error || 'Error al agregar la mascota. Inténtalo de nuevo.')
       }
-    } catch (err) {
-      toast.error('Algo salió mal. Inténtalo de nuevo.')
+    } catch (err: any) {
+      toast.error(err.message || 'Algo salió mal. Inténtalo de nuevo.')
     } finally {
       setIsSubmitting(false)
     }

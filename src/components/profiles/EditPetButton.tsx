@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { toast } from 'sonner'
 import { updatePet } from '@/app/profiles/actions'
+import { getPresignedUploadUrl } from '@/app/profiles/s3-actions'
 import { compressImage } from '@/lib/utils'
 import { useTranslation } from '@/i18n/LanguageProvider'
 import { ClientPortal } from '../ui/ClientPortal'
@@ -88,26 +89,38 @@ export function EditPetButton({ pet }: { pet: any }) {
     const formData = new FormData(e.currentTarget)
     formData.append('id', pet.id)
     
-    // Send existing photo URLs to keep
-    const existingUrls = photos.filter(p => !p.file).map(p => p.src)
-    formData.append('existing_photos', JSON.stringify(existingUrls))
-    
-    // Append new files in the correct order is tricky with FormData.getAll
-    // So we'll just append them all and the backend will have to guess, 
-    // OR we can send a "photo_order" string.
-    
-    // Let's send photo_order to help the backend reconstruct the array
-    const photoOrder = photos.map(p => p.file ? `file:${p.file.name}` : `url:${p.src}`)
-    formData.append('photo_order', JSON.stringify(photoOrder))
-    
-    // Add the files
-    photos.forEach(p => {
-      if (p.file) {
-        formData.append('photo', p.file)
-      }
-    })
-    
     try {
+      const finalPhotos: string[] = []
+      const toastId = toast.loading('Subiendo fotos...')
+      
+      for (const photo of photos) {
+        if (photo.file) {
+          const s3Res = await getPresignedUploadUrl(photo.file.name, photo.file.type)
+          if (s3Res.error || !s3Res.uploadUrl || !s3Res.publicUrl) {
+            throw new Error(s3Res.error || 'Error al obtener URL de S3')
+          }
+
+          const uploadRes = await fetch(s3Res.uploadUrl, {
+            method: 'PUT',
+            body: photo.file,
+            headers: {
+              'Content-Type': photo.file.type,
+            },
+          })
+
+          if (!uploadRes.ok) {
+            throw new Error('Error al subir una de las imágenes a S3')
+          }
+
+          finalPhotos.push(s3Res.publicUrl)
+        } else {
+          finalPhotos.push(photo.src)
+        }
+      }
+      
+      toast.success('Fotos listas', { id: toastId })
+      formData.append('photos', JSON.stringify(finalPhotos))
+      
       const result = await updatePet(formData)
       if (result && result.success) {
         toast.success('Mascota actualizada correctamente')
@@ -115,8 +128,8 @@ export function EditPetButton({ pet }: { pet: any }) {
       } else {
         toast.error(result?.error || 'Error al actualizar la mascota')
       }
-    } catch (err) {
-      toast.error('Algo salió mal')
+    } catch (err: any) {
+      toast.error(err.message || 'Algo salió mal')
     } finally {
       setIsSubmitting(false)
     }

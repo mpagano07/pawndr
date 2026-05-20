@@ -4,6 +4,7 @@ import { useState, useTransition, useRef } from 'react'
 import { Plus, X, Loader2, PawPrint, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import { publishAdoptionPet } from '@/app/adopt/actions'
+import { getPresignedUploadUrl } from '@/app/profiles/s3-actions'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
@@ -37,18 +38,52 @@ export function PublishAdoptionButton() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const fd = new FormData(e.currentTarget)
-    files.forEach(f => fd.append('photos', f))
 
     startTransition(async () => {
-      const result = await publishAdoptionPet(fd)
-      if (result && result.success) {
-        toast.success('¡Mascota publicada en adopción! 🐾')
-        setOpen(false)
-        setPreviews([])
-        setFiles([])
-        router.push(`/adopt/${result.petId}`)
-      } else {
-        toast.error(result?.error || 'Error al publicar mascota')
+      try {
+        const s3Urls: string[] = []
+        
+        if (files.length > 0) {
+          const toastId = toast.loading('Subiendo fotos...')
+          
+          for (const file of files) {
+            const s3Res = await getPresignedUploadUrl(file.name, file.type)
+            if (s3Res.error || !s3Res.uploadUrl || !s3Res.publicUrl) {
+              throw new Error(s3Res.error || 'Error al obtener URL de S3')
+            }
+
+            const uploadRes = await fetch(s3Res.uploadUrl, {
+              method: 'PUT',
+              body: file,
+              headers: {
+                'Content-Type': file.type,
+              },
+            })
+
+            if (!uploadRes.ok) {
+              throw new Error('Error al subir una de las imágenes a S3')
+            }
+
+            s3Urls.push(s3Res.publicUrl)
+          }
+          
+          toast.success('Fotos subidas con éxito', { id: toastId })
+        }
+
+        fd.append('photos', JSON.stringify(s3Urls))
+
+        const result = await publishAdoptionPet(fd)
+        if (result && result.success) {
+          toast.success('¡Mascota publicada en adopción! 🐾')
+          setOpen(false)
+          setPreviews([])
+          setFiles([])
+          router.push(`/adopt/${result.petId}`)
+        } else {
+          toast.error(result?.error || 'Error al publicar mascota')
+        }
+      } catch (err: any) {
+        toast.error(err.message || 'Error al publicar mascota')
       }
     })
   }

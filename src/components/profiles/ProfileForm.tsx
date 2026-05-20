@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { User, Edit2, Loader2, Camera } from 'lucide-react'
 import { updateProfile } from '@/app/profiles/actions'
+import { getPresignedUploadUrl } from '@/app/profiles/s3-actions'
 import { toast } from 'sonner'
 import Image from 'next/image'
 import { LocationButton } from '@/components/ui/LocationButton'
@@ -36,19 +37,39 @@ export function ProfileForm({ profile, dict }: ProfileFormProps) {
 
   const handleSubmit = async (formData: FormData) => {
     setLoading(true)
-    if (avatarFile) {
-      formData.set('avatar', avatarFile)
-    }
-
+    
     try {
+      if (avatarFile) {
+        const toastId = toast.loading('Subiendo imagen de perfil...')
+        const s3Res = await getPresignedUploadUrl(avatarFile.name, avatarFile.type)
+        if (s3Res.error || !s3Res.uploadUrl || !s3Res.publicUrl) {
+          throw new Error(s3Res.error || 'Error al obtener URL firmada')
+        }
+
+        const uploadRes = await fetch(s3Res.uploadUrl, {
+          method: 'PUT',
+          body: avatarFile,
+          headers: {
+            'Content-Type': avatarFile.type,
+          },
+        })
+
+        if (!uploadRes.ok) {
+          throw new Error('Error al subir imagen a S3')
+        }
+
+        formData.set('avatar_url', s3Res.publicUrl)
+        toast.success('Imagen subida con éxito', { id: toastId })
+      }
+
       const result = await updateProfile(formData)
       if (result && result.success) {
         toast.success('Perfil actualizado exitosamente')
       } else {
         toast.error(result?.error || 'Error al actualizar el perfil')
       }
-    } catch (err) {
-      toast.error('Error al actualizar el perfil')
+    } catch (err: any) {
+      toast.error(err.message || 'Error al actualizar el perfil')
     } finally {
       setLoading(false)
     }

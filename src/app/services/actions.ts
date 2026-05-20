@@ -15,38 +15,7 @@ export async function createService(formData: FormData) {
   const address = formData.get('address') as string
   const googleMapsUrl = formData.get('google_maps_url') as string
   const phone = formData.get('phone') as string
-  const photos = formData.getAll('photos') as File[]
-  
-  console.log('[createService] Iniciando para:', name)
-  console.log('[createService] Cantidad de fotos recibidas en server:', photos.length)
-
-  let photosArray: string[] = []
-
-  for (const photo of photos) {
-    if (photo && photo.size > 0) {
-      console.log('[createService] Procesando foto:', photo.name, 'size:', photo.size)
-      const fileExt = photo.name.split('.').pop()
-      const fileName = `${user.id}/${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`
-
-      const { error: uploadError, data } = await supabase.storage
-        .from('services')
-        .upload(fileName, photo, { cacheControl: '3600', upsert: false })
-
-      if (uploadError) {
-        console.error('[createService] Error de subida:', uploadError)
-        return { error: `Error en la imagen: ${uploadError.message}. ¿Creaste el bucket 'services' en Storage?` }
-      }
-
-      if (data) {
-        console.log('[createService] Foto subida con éxito:', data.path)
-        const { data: publicUrlData } = supabase.storage.from('services').getPublicUrl(fileName)
-        console.log('[createService] URL Pública generada:', publicUrlData.publicUrl)
-        photosArray.push(publicUrlData.publicUrl)
-      }
-    } else {
-      console.log('[createService] Foto vacía o inválida omitida')
-    }
-  }
+  const photosArray = JSON.parse(formData.get('photos') as string || '[]') as string[]
 
   // Set user role to provider if not already
   await supabase
@@ -94,30 +63,7 @@ export async function updateService(formData: FormData) {
   const googleMapsUrl = formData.get('google_maps_url') as string
   const phone = formData.get('phone') as string
 
-  const existingPhotos = JSON.parse(formData.get('existing_photos') as string || '[]')
-  const newPhotos = formData.getAll('photos') as File[]
-
-  let photosArray: string[] = [...existingPhotos]
-
-  for (const photo of newPhotos) {
-    if (photo && photo.size > 0) {
-      const fileExt = photo.name.split('.').pop()
-      const fileName = `${user.id}/${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`
-
-      const { error: uploadError, data } = await supabase.storage
-        .from('services')
-        .upload(fileName, photo, { cacheControl: '3600', upsert: false })
-
-      if (uploadError) {
-        return { error: `Error en la imagen: ${uploadError.message}. ¿Creaste el bucket 'services' en Storage?` }
-      }
-
-      if (data) {
-        const { data: publicUrlData } = supabase.storage.from('services').getPublicUrl(fileName)
-        photosArray.push(publicUrlData.publicUrl)
-      }
-    }
-  }
+  const photosArray = JSON.parse(formData.get('photos') as string || '[]') as string[]
 
   const { error } = await supabase
     .from('services')
