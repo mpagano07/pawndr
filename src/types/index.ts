@@ -16,6 +16,7 @@ export interface Pet {
   breed: string | null
   species: string | null
   age: number | null
+  age_unit?: 'months' | 'years'
   gender: 'male' | 'female'
   photos: string[]
   bio: string | null

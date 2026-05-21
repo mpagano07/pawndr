@@ -103,7 +103,7 @@ export default async function ProfilesPage() {
                 <h3 className="font-bold text-lg relative z-10">{pet.name}</h3>
                 <p className="text-white/80 text-sm relative z-10">{pet.breed}</p>
                 <p className="text-white/60 text-xs mt-1 relative z-10">
-                  {pet.age} años • {pet.gender === 'male' ? dict.profile.petMale : dict.profile.petFemale}
+                  {pet.age != null ? `${pet.age} ${pet.age_unit === 'months' ? 'meses' : 'años'}` : ''} • {pet.gender === 'male' ? dict.profile.petMale : dict.profile.petFemale}
                 </p>
               </div>
             ))}

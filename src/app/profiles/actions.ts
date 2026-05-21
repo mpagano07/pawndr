@@ -84,6 +84,7 @@ export async function addPet(formData: FormData) {
   const species = formData.get('species') as string
   const breed = formData.get('breed') as string
   const age = parseInt(formData.get('age') as string)
+  const ageUnit = (formData.get('age_unit') as string) || 'years'
   const gender = formData.get('gender') as string
   const bio = formData.get('bio') as string
   const vaccinated = formData.get('vaccinated') === 'true'
@@ -119,6 +120,7 @@ export async function addPet(formData: FormData) {
     housing: housing || 'both',
     activity_level: activityLevel,
     kids_friendly: kidsFriendly,
+    age_unit: ageUnit,
     temperament: temperament,
     genetic_info: geneticInfo,
     behavior_prediction: behaviorPrediction,
@@ -171,6 +173,7 @@ export async function updatePet(formData: FormData) {
   const species = formData.get('species') as string
   const breed = formData.get('breed') as string
   const age = parseInt(formData.get('age') as string)
+  const ageUnit = (formData.get('age_unit') as string) || 'years'
   const gender = formData.get('gender') as string
   const bio = formData.get('bio') as string
   const vaccinated = formData.get('vaccinated') === 'true'
@@ -188,6 +191,7 @@ export async function updatePet(formData: FormData) {
     vaccinated,
     size: size || 'medium',
     pedigree,
+    age_unit: ageUnit,
     medical_notes: medicalNotes,
     housing: formData.get('housing') as string || 'both',
     activity_level: parseInt(formData.get('activity_level') as string || '3'),

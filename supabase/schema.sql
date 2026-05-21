@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS public.pets (
   species TEXT DEFAULT 'other',           -- dog, cat, rabbit, bird, other
   breed TEXT,
   age INTEGER,
+  age_unit TEXT DEFAULT 'years',
   gender pet_gender NOT NULL,
   photos TEXT[] DEFAULT '{}',
   bio TEXT,

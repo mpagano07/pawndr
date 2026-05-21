@@ -248,9 +248,18 @@ export function EditPetButton({ pet }: { pet: any }) {
                       <label className="text-[10px] text-white/40 uppercase tracking-widest font-black block">Raza</label>
                       <input type="text" name="breed" defaultValue={pet.breed} className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/50 transition-all font-bold" />
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] text-white/40 uppercase tracking-widest font-black block">Edad</label>
-                      <input required type="number" name="age" defaultValue={pet.age} min="0" className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/50 transition-all font-bold" />
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] text-white/40 uppercase tracking-widest font-black block">Edad</label>
+                        <input required type="number" name="age" defaultValue={pet.age} min="0" className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary/50 transition-all font-bold" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] text-white/40 uppercase tracking-widest font-black block">Unidad</label>
+                        <select name="age_unit" defaultValue={pet.age_unit || 'years'} className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 outline-none appearance-none text-white focus:ring-2 focus:ring-primary/50 transition-all font-bold">
+                          <option value="months" className="bg-background">Meses</option>
+                          <option value="years" className="bg-background">Años</option>
+                        </select>
+                      </div>
                     </div>
                     
                     <div className="col-span-2 space-y-1.5">
