@@ -88,7 +88,7 @@ export function AdoptionCard({ pet, isFavorited = false }: AdoptionCardProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent pointer-events-none" />
 
         {/* Top badges */}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-30">
+        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 z-20">
           {pet.urgent && pet.adoption_status !== 'adopted' && (
             <span className="flex items-center gap-1 px-2 py-0.5 bg-red-500 text-white text-[10px] font-black uppercase tracking-wider rounded-full shadow-lg">
               <AlertCircle className="w-3 h-3" />
@@ -117,7 +117,7 @@ export function AdoptionCard({ pet, isFavorited = false }: AdoptionCardProps) {
           onClick={handleFavorite}
           disabled={isPending}
           aria-label={favorited ? 'Quitar de favoritos' : 'Guardar en favoritos'}
-          className="absolute top-2.5 right-2.5 p-2 bg-black/50 backdrop-blur-md rounded-full border border-white/10 hover:scale-110 active:scale-95 transition-all z-30"
+          className="absolute top-2.5 right-2.5 p-2 bg-black/50 backdrop-blur-md rounded-full border border-white/10 hover:scale-110 active:scale-95 transition-all z-20"
         >
           <Bookmark
             className={`w-4 h-4 transition-colors ${favorited ? 'fill-amber-400 text-amber-400' : 'text-white/70'}`}

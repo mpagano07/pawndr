@@ -58,7 +58,7 @@ export default async function AdoptPage({ searchParams }: AdoptPageProps) {
       <div className="fixed bottom-[-10%] right-[-10%] w-[35%] h-[35%] rounded-full bg-orange-500/10 blur-[120px] pointer-events-none" />
 
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-white/5">
+      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
