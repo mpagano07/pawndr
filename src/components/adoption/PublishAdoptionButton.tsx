@@ -99,11 +99,11 @@ export function PublishAdoptionButton() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center" style={{paddingBottom: 'env(safe-area-inset-bottom)'}}>
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setOpen(false)} />
 
-          <div className="relative z-10 w-full max-w-md bg-zinc-900 border border-white/10 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden">
-            <div className="relative px-6 pt-6 pb-4 border-b border-white/8">
+          <div className="relative z-10 w-full max-w-md bg-zinc-900 border border-white/10 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden" style={{maxHeight: 'min(90svh, 90vh)'}}>
+            <div className="relative px-6 pt-6 pb-4 border-b border-white/8 flex-shrink-0">
               <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 to-orange-400" />
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold">Publicar en adopción</h2>
@@ -113,7 +113,8 @@ export function PublishAdoptionButton() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto max-h-[80vh]">
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+              <div className="p-6 space-y-4 overflow-y-auto flex-1">
               {/* Fotos */}
               <div>
                 <label className="text-xs text-white/50 uppercase tracking-wider font-semibold block mb-2">
@@ -236,14 +237,19 @@ export function PublishAdoptionButton() {
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={isPending}
-                className="w-full py-4 bg-amber-500 text-amber-950 font-bold rounded-xl hover:bg-amber-400 transition-all flex items-center justify-center gap-2 disabled:opacity-70 shadow-lg shadow-amber-500/20"
-              >
-                {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <PawPrint className="w-5 h-5" />}
-                Publicar en adopción
-              </button>
+              </div>
+
+              {/* Submit button sticky at the bottom, outside the scroll area */}
+              <div className="flex-shrink-0 px-6 pb-5 pt-3 border-t border-white/8 bg-zinc-900">
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="w-full py-4 bg-amber-500 text-amber-950 font-bold rounded-xl hover:bg-amber-400 transition-all flex items-center justify-center gap-2 disabled:opacity-70 shadow-lg shadow-amber-500/20"
+                >
+                  {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <PawPrint className="w-5 h-5" />}
+                  Publicar en adopción
+                </button>
+              </div>
             </form>
           </div>
         </div>
