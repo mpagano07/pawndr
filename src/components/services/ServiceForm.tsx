@@ -86,13 +86,45 @@ export function ServiceForm({ service, onSuccess }: ServiceFormProps) {
 
       formData.append('photos', JSON.stringify(s3Urls))
 
-      const result = service ? await updateService(formData) : await createService(formData)
-
-      if (result.error) {
-        setError(result.error)
-        setLoading(false)
+      if (service) {
+        const result = await updateService(formData)
+        if (result.error) {
+          setError(result.error)
+          setLoading(false)
+        } else {
+          onSuccess()
+        }
       } else {
-        onSuccess()
+        // Para publicación nueva: enviar todos los datos al endpoint de checkout
+        const payload: any = {
+          name: formData.get('name'),
+          type: formData.get('type'),
+          description: formData.get('description'),
+          address: formData.get('address'),
+          google_maps_url: formData.get('google_maps_url'),
+          phone: formData.get('phone'),
+          photos: JSON.parse(formData.get('photos') as string || '[]'),
+        }
+
+        const checkoutRes = await fetch('/api/mercadopago/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+
+        const checkoutData = await checkoutRes.json()
+        const redirectUrl = checkoutData.url || checkoutData.init_point || checkoutData.sandbox_init_point
+        if (checkoutRes.ok && redirectUrl) {
+          // Guardar temporalmente los datos del servicio para crearlo al volver
+          if (checkoutData.tempServiceId) {
+            sessionStorage.setItem(`pending_service_${checkoutData.tempServiceId}`, JSON.stringify(payload))
+          }
+          window.location.href = redirectUrl
+          return
+        }
+
+        setError(checkoutData.error || 'No se pudo iniciar el pago')
+        setLoading(false)
       }
     } catch (err: any) {
       setError(err.message || 'Error al subir imágenes')
@@ -248,8 +280,11 @@ export function ServiceForm({ service, onSuccess }: ServiceFormProps) {
             </div>
             <div>
               <p className="text-sm font-bold">Primer mes GRATIS</p>
-              <p className="text-[11px] text-white/50">Tu servicio será promocionado sin costo por 30 días. Luego tendrá un costo mensual de suscripción.</p>
+              <p className="text-[11px] text-white/50">Tu servicio será promocionado sin costo por 30 días. Luego tendrá un costo mensual de $20.000 ARS, e incluiremos local promocionado y verificado.</p>
             </div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-[11px] text-white/60">
+            Al publicar, se te pedirá que ingreses los datos de tu tarjeta. Empezarás con 30 días gratis y la suscripción se renovará automáticamente cada mes.
           </div>
 
           <label className="flex items-center gap-3 cursor-pointer group p-1">

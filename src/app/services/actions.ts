@@ -24,7 +24,7 @@ export async function createService(formData: FormData) {
     .eq('id', user.id)
     .is('role', null)
 
-  const { error } = await supabase
+  const { data: serviceData, error } = await supabase
     .from('services')
     .insert({
       provider_id: user.id,
@@ -38,16 +38,19 @@ export async function createService(formData: FormData) {
       rating_avg: 5.0,
       is_active: true
     })
+    .select('id')
+    .single()
 
-  if (error) {
+  if (error || !serviceData) {
     console.error('[createService Error]:', error)
-    return { error: error.message }
+    return { error: error?.message || 'Error al crear el servicio' }
   }
 
   console.log('[createService Success]: Service created for user', user.id)
   revalidatePath('/services')
-  return { success: true }
+  return { success: true, serviceId: serviceData.id }
 }
+
 
 export async function updateService(formData: FormData) {
   const supabase = createClient()

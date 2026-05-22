@@ -11,7 +11,9 @@ import { ServiceForm } from '@/components/services/ServiceForm'
 import { ReviewForm } from '@/components/services/ReviewForm'
 import { ReviewList } from '@/components/services/ReviewList'
 import { ClientPortal } from '@/components/ui/ClientPortal'
-import { deleteService, verifyService } from './actions'
+import { verifyService } from './actions'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { toast } from 'sonner'
 import Image from 'next/image'
 
 interface ServicePlace {
@@ -31,6 +33,7 @@ interface ServicePlace {
   google_maps_url?: string
   provider_id?: string
   description?: string
+  mp_status?: string
 }
 
 export default function ServicesPage() {
@@ -43,6 +46,8 @@ export default function ServicesPage() {
   const [profile, setProfile] = useState<any>(null)
   const [editingService, setEditingService] = useState<any>(null)
   const [reviewingServiceId, setReviewingServiceId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name?: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,10 +58,37 @@ export default function ServicesPage() {
         setProfile(userProfile)
       }
 
+      // Checkout handler
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('checkout') === 'success') {
+        const ref = params.get('ref')
+        if (ref) {
+          const pendingData = sessionStorage.getItem(`pending_service_${ref}`)
+          if (pendingData) {
+            try {
+              const res = await fetch('/api/services/create-from-checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...JSON.parse(pendingData), preapprovalId: ref })
+              })
+              if (res.ok) {
+                toast.success('¡Servicio publicado con éxito!')
+                sessionStorage.removeItem(`pending_service_${ref}`)
+                // Clean URL
+                window.history.replaceState({}, document.title, '/services')
+              }
+            } catch (err) {
+              console.error('Error creating service after checkout:', err)
+            }
+          }
+        }
+      }
+
       // 2. Cargar servicios de la DB inmediatamente
       const { data: dbSvc } = await supabase
         .from('services')
         .select('*')
+        .eq('is_active', true)
       
       const formattedDbSvc = (dbSvc || []).map(s => ({ ...s, promoted: true }))
       setDbServices(formattedDbSvc)
@@ -66,6 +98,15 @@ export default function ServicesPage() {
 
     fetchData()
   }, [])
+
+  const refreshServices = async () => {
+    setLoading(true)
+    const { data: dbSvc } = await supabase.from('services').select('*').eq('is_active', true)
+    const formattedDbSvc = (dbSvc || []).map(s => ({ ...s, promoted: true }))
+    setDbServices(formattedDbSvc)
+    setServices(formattedDbSvc)
+    setLoading(false)
+  }
 
   const handleSearchNearby = () => {
     if (!navigator.geolocation) {
@@ -125,10 +166,39 @@ export default function ServicesPage() {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm('¿Eliminar servicio?')) {
-      await deleteService(id)
-      setServices(prev => prev.filter(s => s.id !== id))
+  const handleDeletePrompt = (service: ServicePlace) => {
+    setDeleteTarget({ id: service.id as string, name: service.name })
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/services/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serviceId: deleteTarget.id })
+      })
+      const data = await res.json()
+      console.debug('[delete API response]', data)
+      if (!res.ok) {
+        toast.error(data?.error || 'Error al eliminar el servicio')
+        return
+      }
+
+      // If API reports no deleted rows, warn and refresh so user can inspect
+      if (data?.deleted && Array.isArray(data.deleted) && data.deleted.length === 0) {
+        toast.warn('No se eliminó ningún registro en la base de datos (puede ser RLS). Reintentá revisando la consola o el panel de Supabase.')
+      }
+
+      await refreshServices()
+      toast.success('Servicio eliminado')
+    } catch (error) {
+      toast.error('No se pudo eliminar el servicio')
+      console.error('[deleteService API Error]', error)
+    } finally {
+      setDeleting(false)
+      setDeleteTarget(null)
     }
   }
 
@@ -140,6 +210,11 @@ export default function ServicesPage() {
 
   const isAdmin = profile?.role === 'admin'
   const canManage = (service: ServicePlace) => isAdmin || service.provider_id === user?.id
+
+  const closeDeleteModal = () => {
+    setDeleteTarget(null)
+    setDeleting(false)
+  }
 
   return (
     <div className="min-h-screen bg-background pb-24 px-4 pt-8">
@@ -220,12 +295,19 @@ export default function ServicesPage() {
                   
                   <div className="p-5">
                     <div className="flex justify-between items-start mb-1">
-                      <h3 className="font-bold text-lg truncate flex items-center gap-2">
-                        {service.name}
-                        <span className="text-[10px] uppercase text-white/50 font-bold px-2 py-0.5 rounded-full bg-white/5">
-                          {service.type === 'vet' ? 'Veterinaria' : service.type === 'grooming' ? 'Peluquería' : service.type === 'shop' ? 'Petshop' : 'Servicio'}
-                        </span>
-                      </h3>
+                      <div>
+                        <h3 className="font-bold text-lg truncate flex items-center gap-2">
+                          {service.name}
+                          <span className="text-[10px] uppercase text-white/50 font-bold px-2 py-0.5 rounded-full bg-white/5">
+                            {service.type === 'vet' ? 'Veterinaria' : service.type === 'grooming' ? 'Peluquería' : service.type === 'shop' ? 'Petshop' : 'Servicio'}
+                          </span>
+                        </h3>
+                        {service.mp_status && (
+                          <span className="mt-1 inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] bg-yellow-500/10 text-yellow-200">
+                            {service.mp_status === 'authorized' ? 'Pago aprobado' : service.mp_status === 'pending' ? 'Pago pendiente' : service.mp_status === 'cancelled' ? 'Pago cancelado' : service.mp_status}
+                          </span>
+                        )}
+                      </div>
                       {service.distance && (
                         <div className="flex items-center gap-1 text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                           <MapPin className="w-3 h-3" />
@@ -255,7 +337,7 @@ export default function ServicesPage() {
                               </button>
                             )}
                             <button onClick={() => setEditingService(service)} className="p-2 bg-white/5 rounded-full text-white/60"><Edit2 className="w-4 h-4" /></button>
-                            <button onClick={() => handleDelete(service.id as string)} className="p-2 bg-red-500/10 rounded-full text-red-500"><Trash2 className="w-4 h-4" /></button>
+                            <button onClick={() => handleDeletePrompt(service)} className="p-2 bg-red-500/10 rounded-full text-red-500"><Trash2 className="w-4 h-4" /></button>
                           </>
                         )}
                         {!canManage(service) && user && <button onClick={() => setReviewingServiceId(service.id as string)} className="p-2 bg-white/5 rounded-full text-white/60"><MessageSquare className="w-4 h-4" /></button>}
@@ -273,6 +355,16 @@ export default function ServicesPage() {
 
         <ClientPortal>
           <AnimatePresence>
+            <ConfirmModal
+              isOpen={Boolean(deleteTarget)}
+              onClose={closeDeleteModal}
+              onConfirm={handleConfirmDelete}
+              title="Eliminar servicio"
+              message={`¿Estás seguro de que querés eliminar ${deleteTarget?.name || 'este servicio'}? Esta acción no se puede deshacer.`}
+              confirmText={deleting ? 'Eliminando...' : 'Eliminar'}
+              cancelText="Cancelar"
+              isDestructive
+            />
             {editingService && (
               <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto" onClick={() => setEditingService(null)}>
                 <div className="relative w-full max-w-2xl glass rounded-[2.5rem] p-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
