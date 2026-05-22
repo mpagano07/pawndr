@@ -99,7 +99,7 @@ export function PublishAdoptionButton() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center" style={{paddingBottom: 'env(safe-area-inset-bottom)'}}>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setOpen(false)} />
 
           <div className="relative z-10 w-full max-w-md bg-zinc-900 border border-white/10 rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden" style={{maxHeight: 'min(90svh, 90vh)'}}>

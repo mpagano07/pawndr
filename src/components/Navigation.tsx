@@ -78,7 +78,7 @@ export function Navigation() {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-white/10 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 glass border-t border-white/10 pb-safe">
       <div className="flex justify-around items-center h-16 max-w-md mx-auto px-1">
         {tabs.map((tab) => {
           const isActive = pathname === tab.href || pathname.startsWith(tab.href + '/')
