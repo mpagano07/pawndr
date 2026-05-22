@@ -1,6 +1,6 @@
 'use client'
 
-import { User, Heart, MessageCircle, Globe, Store, HeartHandshake } from 'lucide-react'
+import { User, Heart, Globe, Store, HeartHandshake, SearchX } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -74,6 +74,7 @@ export function Navigation() {
   const activeTabs = [
     { name: dict.nav.feed, href: '/feed', icon: Heart },
     { name: 'Adoptar', href: '/adopt', icon: HeartHandshake },
+    { name: 'Perdidos', href: '/lost-found', icon: SearchX },
     { name: dict.nav.profile, href: '/profiles', icon: User },
     { name: dict.nav.services, href: '/services', icon: Store },
   ]
@@ -111,18 +112,6 @@ export function Navigation() {
             </Link>
           )
         })}
-
-        {/* Comunidad — desactivado temporalmente, se activa cuando el módulo esté listo */}
-        {/* Para reactivar: mover este bloque al array activeTabs de arriba */}
-        <div className="flex flex-col items-center justify-center flex-1 h-full space-y-0.5 relative opacity-35 cursor-not-allowed select-none">
-          <div className="relative">
-            <Globe className="w-5 h-5 text-white/40" />
-            <span className="absolute -top-2 -right-3 text-[7px] font-bold bg-white/15 text-white/60 px-1 py-0.5 rounded-full leading-none whitespace-nowrap">
-              pronto
-            </span>
-          </div>
-          <span className="text-[8px] font-medium text-white/40">Comunidad</span>
-        </div>
 
       </div>
     </nav>

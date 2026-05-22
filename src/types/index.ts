@@ -186,3 +186,74 @@ export interface AdoptionFilters {
   city?: string
 }
 
+// ========================
+// Lost & Found Module Types
+// ========================
+
+export type LostFoundType = 'lost' | 'found'
+export type LostFoundStatus = 'active' | 'found' | 'resolved'
+
+export interface LostFoundPetImage {
+  id: string
+  pet_id: string
+  image_url: string
+  position: number
+  created_at: string
+}
+
+export interface LostFoundPet {
+  id: string
+  reporter_id: string
+  type: LostFoundType
+  name: string
+  description: string
+  species: string
+  breed: string | null
+  color: string | null
+  gender: string | null
+  age_description: string | null
+  distinguishing_features: string | null
+  status: LostFoundStatus
+  last_seen_location: string
+  latitude: number | null
+  longitude: number | null
+  city: string | null
+  country: string | null
+  date_lost_or_found: string
+  phone: string | null
+  whatsapp: string | null
+  email: string | null
+  contact_name: string | null
+  reward_amount: number | null
+  reward_description: string | null
+  created_at: string
+  updated_at: string
+  // Joined
+  reporter?: Profile
+  images?: LostFoundPetImage[]
+  responses?: LostFoundResponse[]
+  response_count?: number
+}
+
+export interface LostFoundResponse {
+  id: string
+  lost_found_id: string
+  responder_id: string
+  reporter_id: string
+  message: string
+  location_details: string | null
+  photo_url: string | null
+  status: string
+  created_at: string
+  updated_at: string
+  // Joined
+  responder?: Profile
+}
+
+export interface LostFoundFilters {
+  type?: LostFoundType
+  species?: string
+  status?: LostFoundStatus
+  city?: string
+}
+
