@@ -5,6 +5,7 @@ import { FeedClient } from './FeedClient'
 import { PawPrint } from 'lucide-react'
 import { getDictionary } from '@/i18n/getDictionary'
 import { FilterBar } from '@/components/ui/FilterBar'
+import { MatchesHeaderButton } from '@/components/feed/MatchesHeaderButton'
 import { Suspense } from 'react'
 
 interface FeedPageProps {
@@ -104,9 +105,12 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
           <PawPrint className="w-8 h-8 text-primary" />
           <h1 className="text-2xl font-bold tracking-tight text-gradient">{dict.feed.discover}</h1>
         </div>
-        <Suspense fallback={null}>
-          <FilterBar />
-        </Suspense>
+        <div className="flex items-center gap-2">
+          <MatchesHeaderButton />
+          <Suspense fallback={null}>
+            <FilterBar />
+          </Suspense>
+        </div>
       </header>
 
       <main className="relative z-10 px-4 mt-4 flex justify-center">

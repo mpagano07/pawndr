@@ -68,11 +68,12 @@ export function Navigation() {
     }
   }, [supabase])
 
-  const tabs = [
+  // Tabs activos en la barra de navegación
+  // "Comunidad" está desactivado temporalmente (se activa cuando el módulo esté listo)
+  // "Matches" fue movido al header del feed para liberar espacio
+  const activeTabs = [
     { name: dict.nav.feed, href: '/feed', icon: Heart },
-    { name: 'Comunidad', href: '/community', icon: Globe },
     { name: 'Adoptar', href: '/adopt', icon: HeartHandshake },
-    { name: dict.nav.matches, href: '/matches', icon: MessageCircle, badge: unreadCount },
     { name: dict.nav.profile, href: '/profiles', icon: User },
     { name: dict.nav.services, href: '/services', icon: Store },
   ]
@@ -80,7 +81,8 @@ export function Navigation() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 glass border-t border-white/10 pb-safe">
       <div className="flex justify-around items-center h-16 max-w-md mx-auto px-1">
-        {tabs.map((tab) => {
+
+        {activeTabs.map((tab) => {
           const isActive = pathname === tab.href || pathname.startsWith(tab.href + '/')
           return (
             <Link
@@ -99,11 +101,6 @@ export function Navigation() {
                     isActive && tab.href !== '/adopt' && 'fill-current drop-shadow-[0_0_8px_rgba(230,57,70,0.5)]'
                   )}
                 />
-                {tab.badge ? (
-                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-primary text-[9px] text-white flex items-center justify-center rounded-full font-bold border border-zinc-950">
-                    {tab.badge > 9 ? '9+' : tab.badge}
-                  </span>
-                ) : null}
               </div>
               <span className={cn(
                 'font-medium transition-all',
@@ -114,6 +111,19 @@ export function Navigation() {
             </Link>
           )
         })}
+
+        {/* Comunidad — desactivado temporalmente, se activa cuando el módulo esté listo */}
+        {/* Para reactivar: mover este bloque al array activeTabs de arriba */}
+        <div className="flex flex-col items-center justify-center flex-1 h-full space-y-0.5 relative opacity-35 cursor-not-allowed select-none">
+          <div className="relative">
+            <Globe className="w-5 h-5 text-white/40" />
+            <span className="absolute -top-2 -right-3 text-[7px] font-bold bg-white/15 text-white/60 px-1 py-0.5 rounded-full leading-none whitespace-nowrap">
+              pronto
+            </span>
+          </div>
+          <span className="text-[8px] font-medium text-white/40">Comunidad</span>
+        </div>
+
       </div>
     </nav>
   )
