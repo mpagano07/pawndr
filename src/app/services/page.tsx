@@ -107,6 +107,9 @@ export default function ServicesPage() {
           phone: tags['phone'] || tags['contact:phone'],
           distance: Math.round(calculateDistance(lat, lon, elLat, elLon) * 10) / 10,
           rating_avg: 4 + Math.random()
+          ,
+          // build a maps link for OSM results so users can open directions
+          google_maps_url: elLat && elLon ? `https://www.google.com/maps/search/?api=1&query=${elLat},${elLon}` : undefined
         }
       })
       
@@ -219,6 +222,9 @@ export default function ServicesPage() {
                     <div className="flex justify-between items-start mb-1">
                       <h3 className="font-bold text-lg truncate flex items-center gap-2">
                         {service.name}
+                        <span className="text-[10px] uppercase text-white/50 font-bold px-2 py-0.5 rounded-full bg-white/5">
+                          {service.type === 'vet' ? 'Veterinaria' : service.type === 'grooming' ? 'Peluquería' : service.type === 'shop' ? 'Petshop' : 'Servicio'}
+                        </span>
                       </h3>
                       {service.distance && (
                         <div className="flex items-center gap-1 text-primary bg-primary/10 px-2 py-0.5 rounded-full">
