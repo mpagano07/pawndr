@@ -46,10 +46,9 @@ export async function POST(req: NextRequest) {
           frequency_type: 'months',
           transaction_amount: 20000,
           currency_id: 'ARS',
-          free_trial: {
-            frequency: 1,
-            frequency_type: 'months'
-          }
+          // El free_trial directo a veces es ignorado por la API de preapproval,
+          // la mejor forma de dar 1 mes gratis es configurando el start_date 30 días en el futuro.
+          start_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         },
         back_url: `${origin}/services?checkout=success&ref=${tempServiceId}`
       }

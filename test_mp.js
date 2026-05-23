@@ -9,11 +9,20 @@ async function run() {
         payer_email: 'test_user_123456@testuser.com',
         reason: 'Test',
         external_reference: '1234',
-        auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: 20000, currency_id: 'ARS' },
-        back_url: 'http://lvh.me:3000/services'
+        auto_recurring: { 
+          frequency: 1, 
+          frequency_type: 'months', 
+          transaction_amount: 20000, 
+          currency_id: 'ARS',
+          free_trial: {
+            frequency: 1,
+            frequency_type: 'months'
+          }
+        },
+        back_url: 'https://pawndr-app.vercel.app/services'
       }
     });
-    console.log("SUCCESS");
+    console.log(JSON.stringify(res, null, 2));
   } catch (err) {
     console.error(err.message, err.response);
   }
