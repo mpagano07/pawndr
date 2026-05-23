@@ -35,64 +35,67 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
     .eq('owner_id', user.id)
     .limit(1)
 
-  if (!userPets || userPets.length === 0) {
-    redirect('/profiles')
-  }
-  const myPet = userPets[0]
-  const myPetId = myPet.id
+  const myPet = userPets && userPets.length > 0 ? userPets[0] : null
+  const myPetId = myPet?.id
 
-  const { data: existingSwipes } = await supabase
-    .from('swipes')
-    .select('swiped_pet_id')
-    .eq('swiper_pet_id', myPetId)
+  let unswipedPets: any[] = []
 
-  const swipedIds = existingSwipes?.map(s => s.swiped_pet_id) || []
+  if (myPet) {
+    const { data: existingSwipes } = await supabase
+      .from('swipes')
+      .select('swiped_pet_id')
+      .eq('swiper_pet_id', myPetId)
 
-  // 2. Build query with filters
-  let query = supabase
-    .from('pets')
-    .select(`
-      *,
-      owner:owner_id (
-        location
+    const swipedIds = existingSwipes?.map(s => s.swiped_pet_id) || []
+
+    // 2. Build query with filters
+    let query = supabase
+      .from('pets')
+      .select(`
+        *,
+        owner:owner_id (
+          location
+        )
+      `)
+      .neq('owner_id', user.id)
+
+    // Filter out already swiped pets
+    if (swipedIds.length > 0) {
+      query = query.not(
+        'id',
+        'in',
+        `(${swipedIds.map(id => `"${id}"`).join(',')})`
       )
-    `)
-    .neq('owner_id', user.id)
+    }
 
-  // Filter out already swiped pets
-  if (swipedIds.length > 0) {
-    query = query.not(
-      'id',
-      'in',
-      `(${swipedIds.map(id => `"${id}"`).join(',')})`
-    )
+    // Filter by species (exact match for performance and enum compatibility)
+    const species = Array.isArray(searchParams.species) ? searchParams.species[0] : searchParams.species
+    if (species && species !== '') {
+      query = query.eq('species', species)
+    }
+
+    // Filter by gender (exact match for enum compatibility)
+    const gender = Array.isArray(searchParams.gender) ? searchParams.gender[0] : searchParams.gender
+    if (gender && gender !== '') {
+      query = query.eq('gender', gender)
+    }
+
+    // Filter by age
+    const maxAge = Array.isArray(searchParams.maxAge) ? searchParams.maxAge[0] : searchParams.maxAge
+    if (maxAge && !isNaN(parseInt(maxAge))) {
+      query = query.lte('age', parseInt(maxAge))
+    }
+
+    const { data: potentialMatches, error: queryError } = await query.limit(50)
+
+    if (queryError) {
+      console.error('[Feed Query Error]:', queryError)
+    }
+
+    unswipedPets = potentialMatches || []
   }
 
-  // Filter by species (exact match for performance and enum compatibility)
-  const species = Array.isArray(searchParams.species) ? searchParams.species[0] : searchParams.species
-  if (species && species !== '') {
-    query = query.eq('species', species)
-  }
 
-  // Filter by gender (exact match for enum compatibility)
-  const gender = Array.isArray(searchParams.gender) ? searchParams.gender[0] : searchParams.gender
-  if (gender && gender !== '') {
-    query = query.eq('gender', gender)
-  }
-
-  // Filter by age
-  const maxAge = Array.isArray(searchParams.maxAge) ? searchParams.maxAge[0] : searchParams.maxAge
-  if (maxAge && !isNaN(parseInt(maxAge))) {
-    query = query.lte('age', parseInt(maxAge))
-  }
-
-  const { data: potentialMatches, error: queryError } = await query.limit(50)
-
-  if (queryError) {
-    console.error('[Feed Query Error]:', queryError)
-  }
-
-  const unswipedPets = potentialMatches || []
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">

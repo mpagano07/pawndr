@@ -11,7 +11,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import type { Pet } from '@/types'
 
-export function FeedClient({ initialPets, swiperPet }: { initialPets: Pet[], swiperPet: Pet }) {
+export function FeedClient({ initialPets, swiperPet }: { initialPets: Pet[], swiperPet: Pet | null }) {
   const [pets, setPets] = useState(initialPets)
   const [matchPopup, setMatchPopup] = useState<{ pet: Pet, matchId?: string } | null>(null)
   const dict = useTranslation()
@@ -22,6 +22,8 @@ export function FeedClient({ initialPets, swiperPet }: { initialPets: Pet[], swi
   }, [initialPets])
 
   const removeCard = async (swipedPetId: string, action: 'like' | 'dislike') => {
+    if (!swiperPet) return;
+    
     const swipedPet = pets.find(p => p.id === swipedPetId)
 
     // Optimistic UI: remove card immediately
@@ -44,7 +46,21 @@ export function FeedClient({ initialPets, swiperPet }: { initialPets: Pet[], swi
     <div className="w-full max-w-md relative flex flex-col items-center">
       {/* Contenedor de Tarjetas */}
       <div className="w-full h-[60vh] relative z-10">
-        {pets.length > 0 ? (
+        {!swiperPet ? (
+          <div className="w-full h-full glass rounded-[2rem] flex flex-col items-center justify-center p-8 text-center border-dashed border-2 border-white/10">
+            <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mb-6">
+              <Heart className="w-10 h-10 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">¡Falta tu mascota!</h2>
+            <p className="text-white/50 mb-8">Para poder ver y hacer match con otras mascotas, primero debes agregar la tuya.</p>
+            <button
+              onClick={() => router.push('/profiles')}
+              className="px-8 py-3 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/30 hover:scale-105 transition-transform"
+            >
+              Agregar Mascota
+            </button>
+          </div>
+        ) : pets.length > 0 ? (
           <div className="w-full h-full relative">
             {pets.slice().reverse().map((pet, index) => (
               <SwipeCard
@@ -74,7 +90,7 @@ export function FeedClient({ initialPets, swiperPet }: { initialPets: Pet[], swi
       </div>
 
       {/* Botones Manuales */}
-      {pets.length > 0 && (
+      {swiperPet && pets.length > 0 && (
         <div className="flex gap-8 justify-center w-full py-8 mt-4 relative z-[50]">
           <button
             type="button"
