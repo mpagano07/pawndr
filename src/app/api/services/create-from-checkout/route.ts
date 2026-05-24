@@ -23,8 +23,14 @@ export async function POST(req: NextRequest) {
       preapprovalId
     } = body
 
-    if (!name || !type || !description) {
-      return NextResponse.json({ error: 'Missing service data' }, { status: 400 })
+    if (!name) {
+      return NextResponse.json({ error: 'El nombre es requerido' }, { status: 400 })
+    }
+    if (!type) {
+      return NextResponse.json({ error: 'El tipo es requerido' }, { status: 400 })
+    }
+    if (!description) {
+      return NextResponse.json({ error: 'La descripción es requerida' }, { status: 400 })
     }
 
     const supabase = createAdminClient()
