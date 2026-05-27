@@ -39,60 +39,54 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
   const myPetId = myPet?.id
 
   let unswipedPets: any[] = []
+  let rejectedPets: any[] = []
 
   if (myPet) {
     const { data: existingSwipes } = await supabase
       .from('swipes')
-      .select('swiped_pet_id')
+      .select('swiped_pet_id, action')
       .eq('swiper_pet_id', myPetId)
 
-    const swipedIds = existingSwipes?.map(s => s.swiped_pet_id) || []
+    const likedIds = existingSwipes?.filter(s => s.action === 'like').map(s => s.swiped_pet_id) || []
+    const dislikedIds = existingSwipes?.filter(s => s.action === 'dislike').map(s => s.swiped_pet_id) || []
+    const allSwipedIds = [...likedIds, ...dislikedIds]
 
-    // 2. Build query with filters
+    const species = Array.isArray(searchParams.species) ? searchParams.species[0] : searchParams.species
+    const gender = Array.isArray(searchParams.gender) ? searchParams.gender[0] : searchParams.gender
+    const maxAge = Array.isArray(searchParams.maxAge) ? searchParams.maxAge[0] : searchParams.maxAge
+
+    // 2. Build query with filters — exclude ALL swiped pets for fresh queue
     let query = supabase
       .from('pets')
-      .select(`
-        *,
-        owner:owner_id (
-          location
-        )
-      `)
+      .select(`*, owner:owner_id (location)`)
       .neq('owner_id', user.id)
 
-    // Filter out already swiped pets
-    if (swipedIds.length > 0) {
-      query = query.not(
-        'id',
-        'in',
-        `(${swipedIds.map(id => `"${id}"`).join(',')})`
-      )
+    if (allSwipedIds.length > 0) {
+      query = query.not('id', 'in', `(${allSwipedIds.map(id => `"${id}"`).join(',')})`)
     }
-
-    // Filter by species (exact match for performance and enum compatibility)
-    const species = Array.isArray(searchParams.species) ? searchParams.species[0] : searchParams.species
-    if (species && species !== '') {
-      query = query.eq('species', species)
-    }
-
-    // Filter by gender (exact match for enum compatibility)
-    const gender = Array.isArray(searchParams.gender) ? searchParams.gender[0] : searchParams.gender
-    if (gender && gender !== '') {
-      query = query.eq('gender', gender)
-    }
-
-    // Filter by age
-    const maxAge = Array.isArray(searchParams.maxAge) ? searchParams.maxAge[0] : searchParams.maxAge
-    if (maxAge && !isNaN(parseInt(maxAge))) {
-      query = query.lte('age', parseInt(maxAge))
-    }
+    if (species && species !== '') query = query.eq('species', species)
+    if (gender && gender !== '') query = query.eq('gender', gender)
+    if (maxAge && !isNaN(parseInt(maxAge))) query = query.lte('age', parseInt(maxAge))
 
     const { data: potentialMatches, error: queryError } = await query.limit(50)
-
-    if (queryError) {
-      console.error('[Feed Query Error]:', queryError)
-    }
-
+    if (queryError) console.error('[Feed Query Error]:', queryError)
     unswipedPets = potentialMatches || []
+
+    // 3. Fetch disliked pets separately so client can recycle them even after refresh
+    if (dislikedIds.length > 0) {
+      let rejectedQuery = supabase
+        .from('pets')
+        .select(`*, owner:owner_id (location)`)
+        .in('id', dislikedIds)
+        .neq('owner_id', user.id)
+
+      if (species && species !== '') rejectedQuery = rejectedQuery.eq('species', species)
+      if (gender && gender !== '') rejectedQuery = rejectedQuery.eq('gender', gender)
+      if (maxAge && !isNaN(parseInt(maxAge))) rejectedQuery = rejectedQuery.lte('age', parseInt(maxAge))
+
+      const { data: rejected } = await rejectedQuery.limit(100)
+      rejectedPets = rejected || []
+    }
   }
 
 
@@ -120,6 +114,7 @@ export default async function FeedPage({ searchParams }: FeedPageProps) {
         <FeedClient
           key={JSON.stringify(searchParams)}
           initialPets={unswipedPets}
+          rejectedPets={rejectedPets}
           swiperPet={myPet}
         />
       </main>

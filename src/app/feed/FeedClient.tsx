@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { SwipeCard } from '@/components/SwipeCard'
 import { recordSwipe } from './actions'
 import { X, Heart, RefreshCcw } from 'lucide-react'
@@ -11,23 +11,63 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import type { Pet } from '@/types'
 
-export function FeedClient({ initialPets, swiperPet }: { initialPets: Pet[], swiperPet: Pet | null }) {
+function shuffled<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
+export function FeedClient({ initialPets, rejectedPets = [], swiperPet }: {
+  initialPets: Pet[]
+  rejectedPets?: Pet[]
+  swiperPet: Pet | null
+}) {
   const [pets, setPets] = useState(initialPets)
   const [matchPopup, setMatchPopup] = useState<{ pet: Pet, matchId?: string } | null>(null)
   const dict = useTranslation()
   const router = useRouter()
+  // Keep a pool of rejected pets to recycle when the queue empties
+  const rejectedPool = useRef<Pet[]>(rejectedPets)
 
   useEffect(() => {
-    setPets(initialPets)
-  }, [initialPets])
+    rejectedPool.current = rejectedPets
+    // If server already sent an empty fresh queue, recycle immediately
+    if (initialPets.length === 0 && rejectedPets.length > 0) {
+      setPets(shuffled(rejectedPets))
+      rejectedPool.current = []
+    } else {
+      setPets(initialPets)
+    }
+  }, [initialPets, rejectedPets])
 
   const removeCard = async (swipedPetId: string, action: 'like' | 'dislike') => {
     if (!swiperPet) return;
     
     const swipedPet = pets.find(p => p.id === swipedPetId)
 
+    // Track rejected pets so we can recycle them later
+    if (action === 'dislike' && swipedPet) {
+      rejectedPool.current = [...rejectedPool.current, swipedPet]
+    }
+
     // Optimistic UI: remove card immediately
-    setPets((prev) => prev.filter((p) => p.id !== swipedPetId))
+    setPets((prev) => {
+      const next = prev.filter((p) => p.id !== swipedPetId)
+      // If queue is now empty and we have rejected pets, recycle them
+      if (next.length === 0 && rejectedPool.current.length > 0) {
+        toast('Volviendo a mostrar mascotas anteriores 🔄', {
+          description: 'Ya viste todas las disponibles. ¡Revisá las que pasaste!',
+          duration: 4000,
+        })
+        const recycled = shuffled(rejectedPool.current)
+        rejectedPool.current = []
+        return recycled
+      }
+      return next
+    })
 
     try {
       const result = await recordSwipe(swiperPet.id, swipedPetId, action)

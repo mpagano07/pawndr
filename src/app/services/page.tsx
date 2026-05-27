@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Navigation } from '@/components/Navigation'
-import { MapPin, Phone, Star, Store, Plus, Search, Loader2, Edit2, Trash2, ExternalLink, BadgeCheck, MessageSquare, X } from 'lucide-react'
+import { MapPin, Phone, Star, Store, Plus, Search, Loader2, Edit2, Trash2, ExternalLink, BadgeCheck, MessageSquare, X, Scissors, ShoppingBag, HeartPulse, LayoutGrid, ChevronDown } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from '@/i18n/LanguageProvider'
 import { createClient } from '@/utils/supabase/client'
@@ -36,12 +36,25 @@ interface ServicePlace {
   mp_status?: string
 }
 
+type ServiceType = 'all' | 'vet' | 'shop' | 'grooming' | 'other'
+
+const SERVICE_FILTERS: { key: ServiceType; label: string; icon: React.ElementType }[] = [
+  { key: 'all',      label: 'Todos',      icon: LayoutGrid },
+  { key: 'vet',      label: 'Veterinaria', icon: HeartPulse },
+  { key: 'shop',     label: 'Petshop',    icon: ShoppingBag },
+  { key: 'grooming', label: 'Peluquería', icon: Scissors },
+  { key: 'other',    label: 'Otro',       icon: Store },
+]
+
 export default function ServicesPage() {
   const dict = useTranslation()
   const supabase = createClient()
   const [loading, setLoading] = useState(true)
   const [services, setServices] = useState<ServicePlace[]>([])
   const [dbServices, setDbServices] = useState<ServicePlace[]>([])
+  const [activeFilter, setActiveFilter] = useState<ServiceType>('all')
+  const [filterOpen, setFilterOpen] = useState(false)
+  const filterRef = useRef<HTMLDivElement>(null)
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [editingService, setEditingService] = useState<any>(null)
@@ -211,6 +224,21 @@ export default function ServicesPage() {
   const isAdmin = profile?.role === 'admin'
   const canManage = (service: ServicePlace) => isAdmin || service.provider_id === user?.id
 
+  const filteredServices = activeFilter === 'all'
+    ? services
+    : services.filter(s => s.type === activeFilter)
+
+  // Close filter dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
   const closeDeleteModal = () => {
     setDeleteTarget(null)
     setDeleting(false)
@@ -228,7 +256,7 @@ export default function ServicesPage() {
         <button
           onClick={handleSearchNearby}
           disabled={loading}
-          className="w-full mb-8 py-4 glass bg-primary/10 border-primary/20 hover:bg-primary/20 text-white rounded-3xl font-bold transition-all flex items-center justify-center gap-3 group relative overflow-hidden"
+          className="w-full mb-5 py-4 glass bg-primary/10 border-primary/20 hover:bg-primary/20 text-white rounded-3xl font-bold transition-all flex items-center justify-center gap-3 group relative overflow-hidden"
         >
           {loading ? (
             <Loader2 className="w-5 h-5 animate-spin text-primary" />
@@ -241,20 +269,77 @@ export default function ServicesPage() {
           )}
         </button>
 
+        {/* CATEGORY FILTER DROPDOWN */}
+        <div ref={filterRef} className="relative mb-6">
+          {/* Trigger button */}
+          <button
+            onClick={() => setFilterOpen(v => !v)}
+            className="flex items-center gap-2 px-5 py-2.5 glass border border-white/10 rounded-full text-sm font-semibold text-white/80 hover:text-white hover:border-white/25 transition-all duration-200"
+          >
+            {(() => {
+              const f = SERVICE_FILTERS.find(f => f.key === activeFilter)!
+              const Icon = f.icon
+              return (
+                <>
+                  <Icon className="w-3.5 h-3.5 text-primary" />
+                  <span>{f.label}</span>
+                  <ChevronDown className={`w-3.5 h-3.5 text-white/40 transition-transform duration-200 ${filterOpen ? 'rotate-180' : ''}`} />
+                </>
+              )
+            })()}
+          </button>
+
+          {/* Dropdown panel */}
+          <AnimatePresence>
+            {filterOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                transition={{ duration: 0.15 }}
+                className="absolute left-0 top-full mt-2 z-50 glass border border-white/10 rounded-2xl overflow-hidden shadow-2xl min-w-[180px]"
+              >
+                {SERVICE_FILTERS.map(({ key, label, icon: Icon }) => {
+                  const isActive = activeFilter === key
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => { setActiveFilter(key); setFilterOpen(false) }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold transition-colors ${
+                        isActive
+                          ? 'bg-primary/20 text-white'
+                          : 'text-white/60 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <Icon className={`w-4 h-4 ${isActive ? 'text-primary' : 'text-white/30'}`} />
+                      {label}
+                      {isActive && <span className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
+                    </button>
+                  )
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         <div className="space-y-4">
           {loading && services.length === 0 ? (
             <div className="flex flex-col items-center py-20 gap-4">
               <Loader2 className="w-8 h-8 text-primary animate-spin" />
               <p className="text-white/60">Buscando servicios...</p>
             </div>
-          ) : services.length === 0 ? (
+          ) : filteredServices.length === 0 ? (
             <div className="glass rounded-3xl p-8 text-center border-dashed border-2 border-white/10">
               <Search className="w-12 h-12 text-white/20 mx-auto mb-4" />
-              <p className="text-white/60">No se encontraron servicios cercanos.</p>
+              <p className="text-white/60">
+                {services.length === 0
+                  ? 'No se encontraron servicios cercanos.'
+                  : `No hay servicios de tipo "${SERVICE_FILTERS.find(f => f.key === activeFilter)?.label}" disponibles.`}
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {services.map((service, index) => (
+              {filteredServices.map((service, index) => (
                 <motion.div
                   key={service.id}
                   initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
