@@ -10,6 +10,7 @@ import {
   Sparkles,
   Users,
   MapPin,
+  LogOut,
 } from "lucide-react";
 
 import { motion } from "framer-motion";
@@ -17,6 +18,7 @@ import Link from "next/link";
 import { useTranslation } from "@/i18n/LanguageProvider";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 
 const categoryItems = [
   {
@@ -45,7 +47,7 @@ const categoryItems = [
   },
   {
     key: "events",
-    href: "/events",
+    href: "/community",
     icon: Calendar,
     color: "from-orange-500/20 to-yellow-500/10",
   },
@@ -60,9 +62,20 @@ const categoryItems = [
 export default function Home() {
   const dict = useTranslation();
   const searchParams = useSearchParams();
+  const supabase = createClient();
   const [authError, setAuthError] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      if (data.user) {
+        supabase.from('profiles').select('*').eq('id', data.user.id).single().then(({ data: profileData }) => {
+          setProfile(profileData);
+        });
+      }
+    });
     const errorCode = searchParams.get("error_code");
     const errorDesc = searchParams.get("error_description");
     const hash = window.location.hash;
@@ -100,19 +113,45 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link
-              href="/auth/login"
-              className="text-sm font-medium text-white/80 transition hover:text-white"
-            >
-              {dict.common.login}
-            </Link>
+            {user ? (
+              <>
+                <Link
+                  href="/feed"
+                  className="flex items-center gap-2 rounded-full bg-white/10 border border-white/10 px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:scale-105 hover:bg-white/20"
+                >
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt="Profile" className="w-6 h-6 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold">
+                      {profile?.full_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                    </div>
+                  )}
+                  <span className="hidden sm:inline">{profile?.full_name || 'Mi Perfil'}</span>
+                  <span className="sm:hidden">App</span>
+                </Link>
+                <form action="/auth/logout" method="post">
+                  <button type="submit" className="flex items-center justify-center w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 transition hover:bg-red-500/20 hover:scale-105" title="Cerrar sesión">
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </form>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/auth/login"
+                  className="text-sm font-medium text-white/80 transition hover:text-white"
+                >
+                  {dict.common.login}
+                </Link>
 
-            <Link
-              href="/auth/signup"
-              className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white shadow-[0_0_30px_rgba(255,0,100,0.35)] transition hover:scale-105 hover:bg-primary/90"
-            >
-              {dict.common.signup}
-            </Link>
+                <Link
+                  href="/auth/signup"
+                  className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white shadow-[0_0_30px_rgba(255,0,100,0.35)] transition hover:scale-105 hover:bg-primary/90"
+                >
+                  {dict.common.signup}
+                </Link>
+              </>
+            )}
           </div>
         </nav>
 
@@ -199,7 +238,7 @@ export default function Home() {
             {/* CTA */}
             <div>
               <Link
-                href="/community"
+                href={user ? "/community" : "/auth/login"}
                 className="inline-flex items-center justify-center rounded-full bg-primary px-8 py-4 text-base font-semibold text-white shadow-[0_0_40px_rgba(255,0,100,0.4)] transition hover:scale-105 hover:bg-primary/90"
               >
                 Unirme a la Comunidad 🐾
@@ -319,7 +358,7 @@ export default function Home() {
               return (
                 <Link
                   key={item.key}
-                  href={item.href}
+                  href={user ? item.href : "/auth/login"}
                   className="group overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-lg shadow-black/20 backdrop-blur-xl transition hover:-translate-y-2 hover:border-white/20 hover:bg-white/10"
                 >
                   <div

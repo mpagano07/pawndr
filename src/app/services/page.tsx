@@ -46,9 +46,12 @@ const SERVICE_FILTERS: { key: ServiceType; label: string; icon: React.ElementTyp
   { key: 'other',    label: 'Otro',       icon: Store },
 ]
 
+import { useRouter } from 'next/navigation'
+
 export default function ServicesPage() {
   const dict = useTranslation()
   const supabase = createClient()
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [services, setServices] = useState<ServicePlace[]>([])
   const [dbServices, setDbServices] = useState<ServicePlace[]>([])
@@ -65,11 +68,13 @@ export default function ServicesPage() {
   useEffect(() => {
     const fetchData = async () => {
       const { data: { user: authUser } } = await supabase.auth.getUser()
-      setUser(authUser)
-      if (authUser) {
-        const { data: userProfile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single()
-        setProfile(userProfile)
+      if (!authUser) {
+        router.push('/auth/login')
+        return
       }
+      setUser(authUser)
+      const { data: userProfile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single()
+      setProfile(userProfile)
 
       // Checkout handler
       const params = new URLSearchParams(window.location.search)
