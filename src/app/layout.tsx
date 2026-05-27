@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { getDictionary } from "@/i18n/getDictionary";
 import { LanguageProvider } from "@/i18n/LanguageProvider";
 import { LoadingProvider } from "@/components/ui/LoadingProvider";
+import { PushNotificationManager } from "@/components/ui/PushNotificationManager";
 
 import { Toaster } from "sonner";
 
@@ -30,6 +31,7 @@ export default function RootLayout({
             <LoadingProvider>
               {children}
               <Toaster position="top-center" richColors />
+              <PushNotificationManager />
             </LoadingProvider>
           </Suspense>
         </LanguageProvider>
