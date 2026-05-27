@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useLayoutEffect, useRef, type FormEvent } from 'react'
+import { useState, useEffect, useRef, type FormEvent } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { PawPrint, Send, X, CornerUpLeft, Heart, Smile } from 'lucide-react'
 import Image from 'next/image'
@@ -43,84 +43,111 @@ export function ChatClient({
   const [otherIsTyping, setOtherIsTyping] = useState(false)
   const [showEmojis, setShowEmojis] = useState(false)
   const supabase = createClient()
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const channelRef = useRef<{
-    track: (payload: { isTyping: boolean }) => Promise<void>
-    presenceState: () => Record<string, Array<{ isTyping?: boolean }>>
-  } | null>(null)
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  // Track if initial scroll has happened so we don't jump on every update
+  const initialScrollDone = useRef(false)
+  // Track whether user is near the bottom to decide if we should auto-scroll
+  const isNearBottom = useRef(true)
 
+  // ── Initial scroll: instant jump only once after first render ──
   useEffect(() => {
-    setMessages(initialMessages)
-  }, [initialMessages])
+    if (!initialScrollDone.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+      initialScrollDone.current = true
+    }
+  }, [])
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'auto', block: 'end', inline: 'nearest' })
+  // ── Auto-scroll only when user is near bottom or it's our own message ──
+  const scrollToBottom = (force = false) => {
+    if (force || isNearBottom.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }
 
+  // Detect scroll position to know if user scrolled up
+  const handleScroll = () => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    const threshold = 120 // px from bottom
+    isNearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold
+  }
+
+  // Scroll when new messages arrive (respecting user scroll position)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      scrollToBottom()
-    }, 100)
-    return () => clearTimeout(timer)
+    if (!initialScrollDone.current) return
+    scrollToBottom()
   }, [messages, otherIsTyping])
 
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
 
+  // ── Dedup helper ──
   const addMessage = (message: Message) => {
-    const normalized = {
-      likes: 0,
-      likedByMe: false,
-      ...message,
-    }
-
     setMessages((prev) => {
-      if (prev.some((item) => item.id === normalized.id)) return prev
-      return [...prev, normalized].sort(
+      if (prev.some((m) => m.id === message.id)) return prev
+      // Replace temp message if real id matches content+sender
+      const withoutDupe = prev.filter(
+        (m) => !(m.id.startsWith('temp-') && m.sender_id === message.sender_id && m.content === message.content)
+      )
+      return [...withoutDupe, message].sort(
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       )
     })
   }
 
+  // ── Realtime: Broadcast + Postgres Changes fallback ──
   useEffect(() => {
-    const channel = supabase.channel(`match:${matchId}`, {
-      config: {
-        presence: {
-          key: userId,
-        },
-      },
+    const channel = supabase.channel(`chat:${matchId}`, {
+      config: { presence: { key: userId } },
     })
 
     channelRef.current = channel
 
     channel
+      // 1. Broadcast — fastest path (peer-to-peer via Supabase)
       .on('broadcast', { event: 'new_message' }, async (payload) => {
-        const newMsg = payload.payload as Message
-        addMessage(newMsg)
-
-        if (newMsg.sender_id !== userId) {
-          await supabase.from('messages').update({ is_read: true }).eq('id', newMsg.id)
+        const msg = payload.payload as Message
+        addMessage(msg)
+        if (msg.sender_id !== userId) {
+          await supabase.from('messages').update({ is_read: true }).eq('id', msg.id)
         }
       })
       .on('broadcast', { event: 'update_message' }, (payload) => {
-        const updatedMsg = payload.payload as Message
-        setMessages((prev) => prev.map((msg) => 
-          msg.id === updatedMsg.id ? { ...msg, likes: updatedMsg.likes, is_read: updatedMsg.is_read } : msg
-        ))
+        const updated = payload.payload as Message
+        setMessages((prev) =>
+          prev.map((m) => (m.id === updated.id ? { ...m, likes: updated.likes } : m))
+        )
       })
+      // 2. Postgres Changes — fallback so messages always arrive even if broadcast fails
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `match_id=eq.${matchId}` },
+        async (payload) => {
+          const msg = payload.new as Message
+          addMessage(msg)
+          if (msg.sender_id !== userId) {
+            await supabase.from('messages').update({ is_read: true }).eq('id', msg.id)
+          }
+        }
+      )
+      // 3. Typing presence
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState() as Record<string, Array<{ isTyping?: boolean }>>
-        const otherTyping = Object.entries(state).some(([id, presences]) => {
-          return id !== userId && presences.some((p) => p.isTyping)
-        })
+        const otherTyping = Object.entries(state).some(
+          ([id, presences]) => id !== userId && presences.some((p) => p.isTyping)
+        )
         setOtherIsTyping(otherTyping)
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           await channel.track({ isTyping: false })
+          // Mark all unread as read
           await supabase
             .from('messages')
             .update({ is_read: true })
@@ -131,27 +158,23 @@ export function ChatClient({
       })
 
     return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current)
-      }
+      supabase.removeChannel(channel)
     }
-  }, [matchId, supabase, userId])
+  }, [matchId, userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Like ──
   const handleLike = async (messageId: string) => {
-    const message = messages.find(m => m.id === messageId)
+    const message = messages.find((m) => m.id === messageId)
     if (!message) return
 
     const isLiked = message.likes?.includes(userId) || false
     const newLikes = isLiked
-      ? message.likes?.filter(id => id !== userId) || []
+      ? message.likes?.filter((id) => id !== userId) || []
       : [...(message.likes || []), userId]
 
-    // Optimistic update
-    setMessages(prev => prev.map(m =>
-      m.id === messageId
-        ? { ...m, likes: newLikes }
-        : m
-    ))
+    setMessages((prev) =>
+      prev.map((m) => (m.id === messageId ? { ...m, likes: newLikes } : m))
+    )
 
     const { error } = await supabase
       .from('messages')
@@ -159,61 +182,38 @@ export function ChatClient({
       .eq('id', messageId)
 
     if (error) {
-      // Revert optimistic update
-      setMessages(prev => prev.map(m =>
-        m.id === messageId
-          ? { ...m, likes: message.likes }
-          : m
-      ))
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, likes: message.likes } : m))
+      )
       toast.error('Error al actualizar like')
     } else {
       channelRef.current?.send({
         type: 'broadcast',
         event: 'update_message',
-        payload: { ...message, likes: newLikes }
+        payload: { ...message, likes: newLikes },
       })
     }
   }
 
-  const addEmoji = (emoji: string) => {
-    setNewMessage(prev => prev + emoji)
-  }
-
-  const toggleLike = (messageId: string) => {
-    setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === messageId
-          ? {
-              ...msg,
-              likedByMe: !msg.likedByMe,
-              likes: msg.likedByMe ? (msg.likes || 1) - 1 : (msg.likes || 0) + 1,
-            }
-          : msg
-      )
-    )
-  }
-
+  // ── Typing ──
   const handleTyping = () => {
     if (!isTyping) {
       setIsTyping(true)
       channelRef.current?.track({ isTyping: true })
     }
-    
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-    
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false)
       channelRef.current?.track({ isTyping: false })
     }, 2000)
   }
 
+  // ── Send ──
   const sendMessage = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!newMessage.trim()) return
 
     const messageText = newMessage.trim()
-    const finalMessage = messageText
-
     setNewMessage('')
     setReplyTo(null)
     setIsTyping(false)
@@ -225,72 +225,71 @@ export function ChatClient({
       id: tempId,
       match_id: matchId,
       sender_id: userId,
-      content: finalMessage,
+      content: messageText,
       reply_to_id: replyTo?.id,
       likes: [],
       created_at: new Date().toISOString(),
     }
 
     addMessage(tempMsg)
+    // Force scroll when WE send a message
+    setTimeout(() => scrollToBottom(true), 50)
 
     const { data, error } = await supabase
       .from('messages')
       .insert({
         match_id: matchId,
         sender_id: userId,
-        content: finalMessage,
+        content: messageText,
         reply_to_id: replyTo?.id,
         likes: [],
         is_read: false,
       })
-      .select('id,created_at')
+      .select('id, created_at')
       .maybeSingle()
 
     if (error || !data) {
-      setMessages((prev) => prev.filter((msg) => msg.id !== tempId))
-      toast.error('No se pudo enviar el mensaje. Revisa tu conexión.')
+      setMessages((prev) => prev.filter((m) => m.id !== tempId))
+      toast.error('No se pudo enviar el mensaje. Revisá tu conexión.')
       return
     }
 
+    // Replace temp with real
     setMessages((prev) =>
-      prev.map((msg) =>
-        msg.id === tempId
-          ? { ...msg, id: data.id, created_at: data.created_at }
-          : msg
+      prev.map((m) =>
+        m.id === tempId ? { ...m, id: data.id, created_at: data.created_at } : m
       )
     )
 
+    // Broadcast to other user
     channelRef.current?.send({
       type: 'broadcast',
       event: 'new_message',
-      payload: {
-        ...tempMsg,
-        id: data.id,
-        created_at: data.created_at
-      }
+      payload: { ...tempMsg, id: data.id, created_at: data.created_at },
     })
   }
 
   return (
     <>
-      <div className="flex-1 space-y-4 mb-32">
+      {/* Scrollable messages area */}
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 space-y-4 mb-32 overflow-y-auto"
+      >
         {messages.map((msg) => {
           const isMe = msg.sender_id === userId
           const avatar = isMe ? myPetPhoto : otherPetPhoto
           const isLiked = msg.likes?.includes(userId) || false
-          const replyToMessage = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null
+          const replyToMessage = msg.reply_to_id
+            ? messages.find((m) => m.id === msg.reply_to_id)
+            : null
 
           return (
             <div key={msg.id} className={cn('flex w-full gap-3', isMe ? 'flex-row-reverse' : 'flex-row')}>
               <div className="w-8 h-8 rounded-full overflow-hidden bg-white/10 flex-shrink-0 mt-1 border border-white/5 relative">
                 {avatar ? (
-                  <Image 
-                    src={avatar} 
-                    alt="avatar" 
-                    fill
-                    sizes="32px"
-                    className="object-cover" 
-                  />
+                  <Image src={avatar} alt="avatar" fill sizes="32px" className="object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-white/5">
                     <PawPrint className="w-4 h-4 text-white/20" />
@@ -299,10 +298,12 @@ export function ChatClient({
               </div>
               <div className="flex-1 max-w-[75%]">
                 {replyToMessage && (
-                  <div className={cn(
-                    'mb-2 px-3 py-2 rounded-lg text-sm border-l-2',
-                    isMe ? 'border-primary/50 bg-primary/10' : 'border-white/30 bg-white/5'
-                  )}>
+                  <div
+                    className={cn(
+                      'mb-2 px-3 py-2 rounded-lg text-sm border-l-2',
+                      isMe ? 'border-primary/50 bg-primary/10' : 'border-white/30 bg-white/5'
+                    )}
+                  >
                     <p className="text-[11px] opacity-70 mb-1">
                       {isMe ? 'Respondiste a:' : 'Respondió:'}
                     </p>
@@ -319,7 +320,10 @@ export function ChatClient({
                 >
                   <p className="text-[15px] leading-relaxed break-words">{msg.content}</p>
                   <span className="text-[10px] opacity-50 mt-1 block text-right">
-                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(msg.created_at).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </span>
                 </div>
                 <div className="mt-2 flex items-center gap-1 text-[12px] text-white/60">
@@ -330,10 +334,14 @@ export function ChatClient({
                     aria-label={isLiked ? 'Quitar like' : 'Me gusta'}
                     className={cn(
                       'flex items-center gap-1 rounded-full px-2 py-1 transition-colors',
-                      (msg.likes && msg.likes.length > 0) ? 'bg-primary/20 text-primary' : 'hover:bg-white/10'
+                      msg.likes && msg.likes.length > 0
+                        ? 'bg-primary/20 text-primary'
+                        : 'hover:bg-white/10'
                     )}
                   >
-                    <Heart className={cn('w-4 h-4', (msg.likes && msg.likes.length > 0) && 'fill-current')} />
+                    <Heart
+                      className={cn('w-4 h-4', msg.likes && msg.likes.length > 0 && 'fill-current')}
+                    />
                     {msg.likes && msg.likes.length > 0 && (
                       <span className="text-[11px]">{msg.likes.length}</span>
                     )}
@@ -354,9 +362,31 @@ export function ChatClient({
             </div>
           )
         })}
+
+        {/* Typing indicator */}
+        {otherIsTyping && (
+          <div className="flex gap-3 items-end">
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-white/10 flex-shrink-0 border border-white/5 relative">
+              {otherPetPhoto ? (
+                <Image src={otherPetPhoto} alt="avatar" fill sizes="32px" className="object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-white/5">
+                  <PawPrint className="w-4 h-4 text-white/20" />
+                </div>
+              )}
+            </div>
+            <div className="glass rounded-3xl rounded-tl-sm border border-white/10 px-4 py-3 flex gap-1 items-center">
+              <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce [animation-delay:0ms]" />
+              <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce [animation-delay:150ms]" />
+              <span className="w-2 h-2 rounded-full bg-white/40 animate-bounce [animation-delay:300ms]" />
+            </div>
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Input bar */}
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/90 backdrop-blur-xl border-t border-white/10 z-20">
         <div className="max-w-md mx-auto">
           {replyTo && (
@@ -366,18 +396,12 @@ export function ChatClient({
                   <p className="text-[11px] uppercase tracking-[0.2em] text-primary/80">Respondiendo</p>
                   <p className="mt-1 text-white break-words">{replyTo.content}</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setReplyTo(null)}
-                  className="text-white/60 hover:text-white"
-                >
+                <button type="button" onClick={() => setReplyTo(null)} className="text-white/60 hover:text-white">
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
           )}
-
-          {/* Emojis are now inside the input */}
 
           <form onSubmit={sendMessage} className="flex gap-3">
             <div className="relative flex-1">
@@ -409,7 +433,7 @@ export function ChatClient({
                       key={emoji}
                       type="button"
                       onClick={() => {
-                        addEmoji(emoji)
+                        setNewMessage((prev) => prev + emoji)
                         setShowEmojis(false)
                         inputRef.current?.focus()
                       }}
